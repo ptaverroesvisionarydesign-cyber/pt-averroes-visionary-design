@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Account",
+      "description": "System users with specific roles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "enum": ["ADMIN", "DATLAP", "OLDAT"] },
+        "status": { "type": "string" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "DataPelakuUsaha": {
+      "title": "Main Data",
+      "description": "Master data for business actors",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "noHp": { "type": "string" },
+        "namaPelakuUsaha": { "type": "string" },
+        "nik": { "type": "string" },
+        "alamat": { "type": "string" },
+        "statusProses": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["namaPelakuUsaha", "nik", "noHp"]
+    },
+    "Gmv": {
+      "title": "GMV Records",
+      "description": "Tracks incentives for assistants",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "totalGmv": { "type": "number" }
+      }
+    },
+    "Pembayaran": {
+      "title": "Payment Tracking",
+      "description": "Records of payments to assistants",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "jumlahDibayar": { "type": "number" },
+        "status": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/data_utama/{id}": {
+      "schema": "DataPelakuUsaha",
+      "description": "Main business actor documents"
+    },
+    "/users/{id}": {
+      "schema": "User",
+      "description": "Application users"
+    },
+    "/gmv/{id}": {
+      "schema": "Gmv",
+      "description": "Incentive calculation data"
+    },
+    "/pembayaran/{id}": {
+      "schema": "Pembayaran",
+      "description": "Financial payment records"
+    },
+    "/referensi/{id}": {
+      "schema": "object",
+      "description": "Reference data like KBLI"
+    }
+  }
+}
