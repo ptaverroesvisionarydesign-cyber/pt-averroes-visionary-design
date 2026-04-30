@@ -45,7 +45,7 @@ export default function LoginPage() {
   />
 </div>
           <h1 className="text-3xl font-black tracking-tight uppercase">SATDAPUS</h1>
-          <p className="mt-1 text-xs font-bold text-purple-100 opacity-80 uppercase tracking-widest">Satu Data Pelaku Usaha</p>
+          <p className="mt-1 text-xs font-bold text-purple-100 opacity-80 uppercase tracking-widest">Pusat Data Pelaku Usaha</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8">
