@@ -468,6 +468,17 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
                       />
                     </div>
 
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Lock size={12} /> Password Baru (Opsional)</label>
+                      <input 
+                        type="password" 
+                        placeholder="Klik untuk isi password baru..."
+                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
+                        value={userForm.password} 
+                        onChange={e => setUserForm({...userForm, password: e.target.value})} 
+                      />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Phone size={12} /> Nomor HP</label>
@@ -528,36 +539,6 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
                   </div>
 
                   <div className="p-8 bg-slate-50 border border-slate-200 rounded-[2.5rem] space-y-6">
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-400 shadow-sm">
-                              <Lock size={20} />
-                           </div>
-                           <div>
-                              <div className="text-xs font-black uppercase text-slate-800">Reset Keamanan</div>
-                              <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Berikan password baru secara manual</div>
-                           </div>
-                        </div>
-                        <input 
-                          type="checkbox" 
-                          className="w-6 h-6 rounded-lg accent-primary cursor-pointer" 
-                          checked={userForm.resetPassword}
-                          onChange={e => setUserForm({...userForm, resetPassword: e.target.checked})}
-                        />
-                     </div>
-
-                     {userForm.resetPassword && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-2">
-                           <input 
-                             type="password" 
-                             placeholder="Masukkan Password Baru..." 
-                             className="w-full px-6 py-4 bg-white border border-primary/20 rounded-2xl font-bold text-slate-700 outline-none shadow-sm focus:ring-4 focus:ring-primary/10"
-                             value={userForm.password}
-                             onChange={e => setUserForm({...userForm, password: e.target.value})}
-                           />
-                        </motion.div>
-                     )}
-
                      <div className="flex items-center justify-between px-6 py-4 bg-rose-50 rounded-2xl border border-rose-100">
                         <div className="flex items-center gap-3">
                            <LogOut size={16} className="text-rose-500" />

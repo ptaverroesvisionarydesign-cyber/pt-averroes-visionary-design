@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     // Hardcoded demo authentication as requested
-    if (email === 'admin@halal.id' && password === 'avd2711') {
+    if (email === 'admin@halal.id' && password === 'admin') {
       const u: User = { id: 'admin', email, name: 'Super Admin', role: UserRole.SUPER_ADMIN, status: 'Aktif', joinDate: '2025-01-01', lastLogin: '-' };
       setUser(u);
       localStorage.setItem('satdapus_user', JSON.stringify(u));

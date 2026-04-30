@@ -39,8 +39,13 @@ import { useAuth } from '../AuthContext';
 
 type Tab = 'users' | 'kbli' | 'wilayah';
 
+import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../NotificationContext';
+
 export default function AdminSettings() {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const [activeTab, setActiveTab ] = useState<Tab>('users');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -146,6 +151,16 @@ export default function AdminSettings() {
         if (editingItem) {
           setUsers(users.map(u => u.id === editingItem.id ? { ...u, ...userData } : u));
           setNotificationMsg('Data berhasil diperbarui');
+          
+          addNotification({
+            type: 'PROSES_DATA',
+            title: '👤 User Diupdate',
+            message: `Data user ${userData.name} telah diperbarui oleh ${currentUser?.name}`,
+            userId: currentUser?.id || '',
+            actorName: currentUser?.name || '',
+            targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
+            link: '/admin-settings'
+          });
         } else {
           setUsers([...users, { 
             id: Math.random().toString(36).substr(2, 9), 
@@ -154,6 +169,16 @@ export default function AdminSettings() {
             lastLogin: '-'
           }]);
           setNotificationMsg('Akun baru berhasil dibuat');
+
+          addNotification({
+            type: 'INPUT_DATA',
+            title: '🆕 User Baru',
+            message: `User baru ${userData.name} telah ditambahkan oleh ${currentUser?.name}`,
+            userId: currentUser?.id || '',
+            actorName: currentUser?.name || '',
+            targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
+            link: '/admin-settings'
+          });
         }
         setShowNotification(true);
         setTimeout(() => setShowNotification(false), 3000);
@@ -507,6 +532,18 @@ export default function AdminSettings() {
                         </div>
                       </div>
 
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Lock size={12} /> Password {editingItem ? '(Opsional)' : '(Wajib)'}</label>
+                        <input 
+                          type="password" 
+                          required={!editingItem}
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
+                          value={userForm.password} 
+                          onChange={e => setUserForm({...userForm, password: e.target.value})} 
+                          placeholder={editingItem ? "Kosongkan jika tidak ingin mengubah" : "Masukkan password baru"} 
+                        />
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Phone size={12} /> Nomor HP (WA)</label>
@@ -555,38 +592,6 @@ export default function AdminSettings() {
                     </div>
 
                     <div className="space-y-4 pt-6 border-t border-slate-50">
-                      <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
-                        <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
-                                 <Lock size={18} />
-                              </div>
-                              <div>
-                                 <div className="text-xs font-black uppercase text-slate-800">Reset Keamanan</div>
-                                 <div className="text-[10px] font-bold text-slate-400 uppercase">Input password baru untuk user</div>
-                              </div>
-                           </div>
-                           <input 
-                            type="checkbox" 
-                            className="w-5 h-5 accent-primary cursor-pointer" 
-                            checked={userForm.resetPassword}
-                            onChange={e => setUserForm({...userForm, resetPassword: e.target.checked})}
-                           />
-                        </div>
-
-                        {userForm.resetPassword && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-2">
-                             <input 
-                              type="password" 
-                              placeholder="Masukkan password baru..."
-                              className="w-full px-5 py-4 bg-white border border-primary/20 rounded-2xl font-bold text-slate-700 outline-none shadow-sm"
-                              value={userForm.password}
-                              onChange={e => setUserForm({...userForm, password: e.target.value})}
-                             />
-                          </motion.div>
-                        )}
-                      </div>
-
                       <div className="flex items-center justify-between px-6 py-4 bg-rose-50/30 rounded-3xl border border-rose-100/50">
                          <div className="flex items-center gap-3">
                             <LogOut size={16} className="text-rose-400" />

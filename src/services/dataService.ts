@@ -7,11 +7,8 @@ import { GoogleGenAI } from "@google/genai";
 import { DataPelakuUsaha, StatusProses, UserRole, User, Kbli, Wilayah } from "../types";
 import { format } from "date-fns";
 
-console.log("ENV:", import.meta.env);
-console.log("API KEY:", import.meta.env.VITE_API_KEY);
-const ai = new GoogleGenAI({
-  apiKey: import.meta.env.VITE_API_KEY
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 // Centralized Store (Simulated for this demo)
 let kblisStore: Kbli[] = [
   { id: '1', kode: '10710', judul: 'Industri Produk Roti dan Kue', deskripsi: 'Mencakup industri berbagai jenis roti, kue, biskuit, dan sejenisnya.' },
