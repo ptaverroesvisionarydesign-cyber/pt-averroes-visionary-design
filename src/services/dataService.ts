@@ -7,8 +7,11 @@ import { GoogleGenAI } from "@google/genai";
 import { DataPelakuUsaha, StatusProses, UserRole, User, Kbli, Wilayah } from "../types";
 import { format } from "date-fns";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
+console.log("ENV:", import.meta.env);
+console.log("API KEY:", import.meta.env.VITE_API_KEY);
+const ai = new GoogleGenAI({
+  apiKey: import.meta.env.VITE_API_KEY
+});
 // Centralized Store (Simulated for this demo)
 let notificationsStore: any[] = [
   { id: '1', title: 'Update Sistem v2.1', message: 'Fitur manajemen user super admin telah diaktifkan.', time: '2 menit yang lalu', isRead: false, type: 'system' },
