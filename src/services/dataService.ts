@@ -6,11 +6,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { DataPelakuUsaha, StatusProses, UserRole, User, Kbli, Wilayah } from "../types";
 import { format } from "date-fns";
-console.log("ENV:", import.meta.env);
-console.log("API KEY:", import.meta.env.VITE_API_KEY);
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Centralized Store (Simulated for this demo)
+let notificationsStore: any[] = [
+  { id: '1', title: 'Update Sistem v2.1', message: 'Fitur manajemen user super admin telah diaktifkan.', time: '2 menit yang lalu', isRead: false, type: 'system' },
+  { id: '2', title: 'Data Baru Masuk', message: 'Bpk. Junaedi telah mendaftarkan produk baru.', time: '1 jam yang lalu', isRead: true, type: 'data' },
+  { id: '3', title: 'Tagihan GMV', message: 'Sisa hutang Budi (DATLAP) menunggu pembayaran.', time: '3 jam yang lalu', isRead: false, type: 'payment' },
+];
+
 let kblisStore: Kbli[] = [
   { id: '1', kode: '10710', judul: 'Industri Produk Roti dan Kue', deskripsi: 'Mencakup industri berbagai jenis roti, kue, biskuit, dan sejenisnya.' },
   { id: '2', kode: '56101', judul: 'Restoran', deskripsi: 'Usaha penyediaan makanan dan minuman untuk dikonsumsi di tempat.' },
@@ -23,6 +28,14 @@ let wilayahsStore: Wilayah[] = [
   { id: '2', kode: 'SINGAPARNA', nama: 'Kecamatan Singaparna' },
   { id: '3', kode: 'MANGUNREJA', nama: 'Kecamatan Mangunreja' },
   { id: '4', kode: 'SUKARAJA', nama: 'Kecamatan Sukaraja' },
+];
+
+let usersStore: User[] = [
+  { id: '1', email: 'superadmin@halal.id', name: 'Super Admin', noHp: '081111111111', role: UserRole.SUPER_ADMIN, status: 'Aktif', joinDate: '2025-01-01', lastLogin: '2026-04-28 10:00' },
+  { id: '2', email: 'admin.utama@halal.id', name: 'Admin Utama', noHp: '081222222222', role: UserRole.ADMIN, status: 'Aktif', joinDate: '2025-02-15', lastLogin: '2026-04-29 08:30' },
+  { id: '3', email: 'badudatlap@halal.id', name: 'Badu Datlap', noHp: '081333333333', role: UserRole.DATLAP, kodeWilayah: 'LEUWISARI', status: 'Aktif', joinDate: '2025-03-20', lastLogin: '2026-04-28 16:45' },
+  { id: '4', email: 'sitioldat@halal.id', name: 'Siti Oldat', noHp: '081444444444', role: UserRole.OLDAT, kodeWilayah: 'SINGAPARNA', status: 'Aktif', joinDate: '2025-04-10', lastLogin: '2026-04-29 09:15' },
+  { id: '5', email: 'budidatlap@halal.id', name: 'Budi Datlap', noHp: '081555555555', role: UserRole.DATLAP, kodeWilayah: 'MANONJAYA', status: 'Aktif', joinDate: '2025-05-05', lastLogin: '2026-04-30 07:00' },
 ];
 
 // Initial Data List
@@ -75,6 +88,45 @@ export const dataService = {
   deleteWilayah: (id: string) => {
     wilayahsStore = wilayahsStore.filter(w => w.id !== id);
   },
+
+  // User Management
+  getUsers: () => usersStore,
+  addUser: (user: Omit<User, 'id' | 'joinDate' | 'lastLogin'>) => {
+    const newUser = { 
+      ...user, 
+      id: Math.random().toString(36).substr(2, 9),
+      joinDate: new Date().toISOString().split('T')[0],
+      lastLogin: '-'
+    };
+    usersStore = [...usersStore, newUser];
+    return newUser;
+  },
+  updateUser: (id: string, user: Partial<User>) => {
+    usersStore = usersStore.map(u => u.id === id ? { ...u, ...user } : u);
+  },
+  deleteUser: (id: string) => {
+    usersStore = usersStore.filter(u => u.id !== id);
+  },
+
+  // Notification Management
+  getNotifications: () => notificationsStore,
+  addNotification: (notification: any) => {
+    const newNotif = { 
+      ...notification, 
+      id: Math.random().toString(36).substr(2, 9),
+      isRead: false,
+      time: 'Baru saja'
+    };
+    notificationsStore = [newNotif, ...notificationsStore];
+    return newNotif;
+  },
+  markNotifAsRead: (id: string) => {
+    notificationsStore = notificationsStore.map(n => n.id === id ? { ...n, isRead: true } : n);
+  },
+  clearAllNotifs: () => {
+    notificationsStore = [];
+  },
+
   // Generate AI Production Process
   generateProsesProduksi: async (namaProduk: string, bahanBaku: string) => {
     const prompt = `Buatkan narasi langkah-langkah proses produksi yang profesional, singkat, dan memenuhi standar halal untuk produk "${namaProduk}" dengan bahan utama: ${bahanBaku}. Format dalam poin-poin langkah produksi.`;

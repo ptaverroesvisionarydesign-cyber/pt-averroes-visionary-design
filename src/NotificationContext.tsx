@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Notification, UserRole } from './types';
 import { useAuth } from './AuthContext';
+import { dataService } from './services/dataService';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -17,7 +18,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>(() => {
     const saved = localStorage.getItem('satdapus_notifications');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) return JSON.parse(saved);
+    
+    // Initial notifications if localStorage is empty
+    return dataService.getNotifications().map((n: any) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      timestamp: new Date().toISOString(), // Mocking fresh timestamps
+      read: n.isRead,
+      type: n.type === 'system' ? 'PROSES_DATA' : 'INPUT_DATA',
+      userId: 'system',
+      targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT]
+    }));
   });
 
   const [broadcast] = useState(() => new BroadcastChannel('notifications_channel'));
@@ -73,29 +86,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     localStorage.removeItem('satdapus_notifications');
   };
 
-  // Filter notifications based on user role
-  const filteredNotifications = notifications.filter(n => {
-    if (!user) return false;
-    
-    // Super Admin sees everything
-    if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) return true;
-    
-    // Others see if their role is in targetRoles
-    const isTarget = n.targetRoles.includes(user.role);
-    
-    // Specific logic for roles
-    if (user.role === UserRole.DATLAP) {
-       // Datlap only sees notifications where they are the actor or it's specifically for them
-       return isTarget && n.userId === user.id;
-    }
-    
-    if (user.role === UserRole.OLDAT) {
-       // Oldat sees process notifications related to them
-       return isTarget;
-    }
-    
-    return isTarget;
-  });
+  // All notifications are global and apply to all accounts
+  const filteredNotifications = notifications;
 
   const unreadCount = filteredNotifications.filter(n => !n.read).length;
 

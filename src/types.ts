@@ -8,6 +8,7 @@ export enum UserRole {
   ADMIN = 'ADMIN',
   DATLAP = 'DATLAP', // Pendamping Data Lapangan
   OLDAT = 'OLDAT',   // Pendamping Olah Data
+  USER = 'USER',
 }
 
 export interface Kbli {

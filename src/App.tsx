@@ -49,10 +49,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   ].filter(item => item.roles.includes(user?.role as UserRole));
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row overflow-x-hidden">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen">
-        <div className="p-6">
+      <aside className="hidden md:flex w-64 lg:w-72 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen shrink-0">
+        <div className="p-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-purple-glow">
               <Database size={24} className="text-white" />
@@ -103,59 +103,101 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Header - Mobile */}
-      <header className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-2 text-primary font-black tracking-tight">
-          <Database size={20} />
-          <span>SATDAPUS</span>
+      <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-purple-glow">
+            <Database size={16} className="text-white" />
+          </div>
+          <span className="text-lg font-black tracking-tighter text-slate-900">SATDAPUS</span>
         </div>
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-slate-600"
-        >
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2.5 bg-slate-50 text-slate-900 rounded-xl active:scale-95 transition-all"
+          >
+            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </header>
 
-      {/* Sidebar - Mobile */}
+      {/* Sidebar - Mobile Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="md:hidden fixed inset-0 z-50 bg-white p-6 pt-20"
-          >
-            <button 
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="absolute top-6 right-6 p-2"
+              className="md:hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="md:hidden fixed top-0 bottom-0 left-0 z-[60] w-[280px] bg-white shadow-2xl flex flex-col"
             >
-              <X />
-            </button>
-            <nav className="space-y-4">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-4 text-lg font-bold text-slate-700 py-3 border-b border-slate-50"
+              <div className="p-8 border-b border-slate-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-purple-glow">
+                      <Database size={24} className="text-white" />
+                    </div>
+                    <span className="text-xl font-bold tracking-tight text-purple-900">SATDAPUS</span>
+                  </div>
+                  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <nav className="flex-1 px-4 py-8 space-y-1">
+                {navigation.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-5 py-4 rounded-2xl text-sm font-bold uppercase tracking-widest transition-all",
+                        isActive 
+                          ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                          : 'text-slate-500 hover:bg-slate-50'
+                      )}
+                    >
+                      <item.icon size={18} />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="p-6 border-t border-slate-50 bg-slate-50/50">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center font-bold text-white shrink-0">
+                    {user?.name?.[0].toUpperCase()}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-black truncate text-slate-900 uppercase">{user?.name}</p>
+                    <p className="text-[10px] text-slate-500 truncate uppercase mt-0.5 tracking-wider font-bold">{user?.role}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={logout}
+                  className="flex items-center justify-center gap-3 w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-all shadow-sm"
                 >
-                  <item.icon />
-                  {item.name}
-                </Link>
-              ))}
-              <button 
-                onClick={logout}
-                className="flex items-center gap-4 text-lg font-bold text-red-600 py-3 w-full text-left"
-              >
-                <LogOut />
-                Keluar
-              </button>
-            </nav>
-          </motion.div>
+                  <LogOut size={16} />
+                  Keluar
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      <main className="flex-1 relative overflow-auto">
+      <main className="flex-1 relative min-h-[calc(100vh-64px)] md:min-h-screen">
         {children}
         <BrandingFooter />
       </main>

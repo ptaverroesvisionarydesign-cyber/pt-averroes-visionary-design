@@ -212,21 +212,21 @@ export default function DataListView() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-8">
       {/* OLDAT STEP 1: Status Dropdown */}
       {user?.role === UserRole.OLDAT && viewStep === 1 && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[2.5rem] shadow-elevation p-10 text-center border border-slate-100 max-w-lg mx-auto"
+          className="bg-white rounded-[2.5rem] shadow-elevation p-6 sm:p-10 text-center border border-slate-100 max-w-lg mx-auto"
         >
-          <div className="h-20 w-20 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <Clock size={40} />
+          <div className="h-16 w-16 sm:h-20 sm:w-20 bg-primary/10 text-primary rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <Clock size={32} className="sm:w-10 sm:h-10" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">PILIH STATUS PROSES</h2>
-          <p className="text-slate-500 font-medium mb-8">Tentukan tahap pengolahan data yang ingin Anda kerjakan hari ini.</p>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mb-2 tracking-tight uppercase">Pilih Tahap Kerja</h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-bold uppercase tracking-wide mb-8">Tentukan tahap pengolahan data hari ini.</p>
           
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {statuses.map(status => (
               <button
                 key={status}
@@ -234,10 +234,10 @@ export default function DataListView() {
                   setSelectedStatus(status);
                   setViewStep(2);
                 }}
-                className="w-full py-4 px-6 rounded-2xl border-2 border-slate-100 text-left font-bold text-slate-700 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-between group"
+                className="w-full py-4 px-5 sm:px-6 rounded-2xl border-2 border-slate-100 text-left font-bold text-slate-700 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-between group text-xs sm:text-sm uppercase tracking-tight"
               >
                 {status}
-                <ChevronRight className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4" />
               </button>
             ))}
           </div>
@@ -251,63 +251,65 @@ export default function DataListView() {
           animate={{ opacity: 1 }}
           className="space-y-6"
         >
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-                {selectedStatus ? `DATA: ${selectedStatus}` : 'SEMUA DATA PELAKU USAHA'}
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase leading-tight">
+                {selectedStatus ? `LIST: ${selectedStatus}` : 'REKAPITULASI DATA'}
               </h1>
-              <p className="text-slate-400 font-medium italic">Menampilkan {filteredData.length} entri data</p>
+              <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mt-2 bg-slate-100 px-3 py-1 rounded-full inline-block">Menampilkan {filteredData.length} entri data</p>
             </div>
             
             {user?.role === UserRole.OLDAT && (
               <button 
                 onClick={() => setViewStep(1)}
-                className="text-xs font-bold text-primary bg-primary/10 px-4 py-2 rounded-xl"
+                className="w-full sm:w-auto text-[10px] sm:text-xs font-black text-primary bg-primary/10 px-6 py-3 rounded-xl border border-primary/10 uppercase hover:bg-primary hover:text-white transition-all shadow-sm"
               >
-                Ganti Status
+                Ganti Tahap Kerja
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-elevation border border-slate-100">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 bg-white p-2 rounded-[2rem] shadow-elevation border border-slate-100">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
                 type="text" 
-                placeholder="Cari berdasarkan Nama atau NIK..."
-                className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl outline-none focus:bg-white transition-all font-medium"
+                placeholder="Cari Nama / NIK..."
+                className="w-full pl-12 pr-4 py-3 sm:py-3.5 bg-slate-50 rounded-2xl outline-none focus:bg-white border border-transparent focus:border-primary/20 transition-all font-bold text-xs sm:text-sm text-slate-600"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-            {user?.role === UserRole.ADMIN && (
-              <button 
-                onClick={() => {
-                  setEditingData({
-                    id: Math.random().toString(36).substr(2, 9),
-                    namaPelakuUsaha: '',
-                    nik: '',
-                    noHp: '',
-                    statusProses: 'Proses pengajuan',
-                    timestamp: new Date().toLocaleDateString('id-ID'),
-                    kecamatan: 'Leuwisari',
-                    kbliId: '3'
-                  });
-                  setViewStep(3);
-                }}
-                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
-              >
-                <PlusCircle size={18} /> Tambah
+            <div className="flex items-center gap-2">
+              {user?.role === UserRole.ADMIN && (
+                <button 
+                  onClick={() => {
+                    setEditingData({
+                      id: Math.random().toString(36).substr(2, 9),
+                      namaPelakuUsaha: '',
+                      nik: '',
+                      noHp: '',
+                      statusProses: 'Proses pengajuan',
+                      timestamp: new Date().toLocaleDateString('id-ID'),
+                      kecamatan: 'Leuwisari',
+                      kbliId: '3'
+                    });
+                    setViewStep(3);
+                  }}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/20"
+                >
+                  <PlusCircle size={16} /> Tambah Data
+                </button>
+              )}
+              <button className="p-3 sm:p-3.5 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-all shadow-sm">
+                <Filter size={18} />
               </button>
-            )}
-            <button className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200">
-              <Filter size={20} />
-            </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-[2rem] shadow-elevation border border-slate-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto scrollbar-hide">
+              <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Pelaku Usaha</th>

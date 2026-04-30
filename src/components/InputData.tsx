@@ -220,40 +220,41 @@ export default function InputData() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto pb-24 sm:pb-32">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="geometric-card overflow-hidden"
       >
-        <div className="bg-primary p-8 text-white flex items-center justify-between relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-          <div className="relative z-10">
-            <h1 className="text-2xl font-black tracking-tight uppercase">
-              {isLocked ? 'HASIL DATA PENGINPUTAN' : 'FORM INPUT DATA'}
+        <div className="bg-primary p-6 sm:p-10 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="relative z-10 text-center sm:text-left">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tighter uppercase leading-tight">
+              {isLocked ? 'Review Validasi Data' : 'Panel Penginputan Data'}
             </h1>
-            <p className="text-[10px] opacity-80 font-black uppercase tracking-widest mt-1">
-              {isLocked ? 'Review Data Pelaku Usaha' : `Satu Data Pelaku Usaha • Step ${step} of 3`}
+            <p className="text-[10px] opacity-80 font-black uppercase tracking-widest mt-2 bg-white/10 px-3 py-1 rounded-full inline-block">
+              {isLocked ? 'Ringkasan Final' : `Tahap ${step} dari 3 • Selesai 33%`}
             </p>
           </div>
-          <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md relative z-10">
-             <FileText />
+          <div className="h-14 w-14 bg-white/20 rounded-[1.5rem] flex items-center justify-center backdrop-blur-md relative z-10 self-center sm:self-auto shadow-xl">
+             <FileText size={24} />
           </div>
-        </div>          <div className="p-8 md:p-12 space-y-12">
-            <div className="flex justify-end -mb-8">
+        </div>          
+        <div className="p-6 sm:p-10 md:p-12 space-y-12 text-slate-700">
+            <div className="flex justify-center sm:justify-end -mb-8">
               <button 
                 onClick={() => setIsLocked(!isLocked)}
                 className={cn(
-                  "flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg",
+                  "w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-[1.5rem] font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95",
                   isLocked 
-                    ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
-                    : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+                    ? "bg-amber-100 text-amber-600 hover:bg-amber-200 shadow-amber-200/20"
+                    : "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/30"
                 )}
               >
                 {isLocked ? (
-                  <>Edit data <RotateCw size={14} /></>
+                  <>Buka Kunci Data <RotateCw size={14} /></>
                 ) : (
-                  <>Kunci data <CheckCircle2 size={14} /></>
+                  <>Verifikasi & Kunci <CheckCircle2 size={14} /></>
                 )}
               </button>
             </div>

@@ -46,7 +46,7 @@ export default function NotificationDropdown() {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-3xl shadow-3xl border border-slate-100 z-50 overflow-hidden"
+            className="fixed md:absolute right-4 left-4 md:left-auto md:right-0 mt-3 md:w-96 bg-white rounded-3xl shadow-3xl border border-slate-100 z-50 overflow-hidden"
           >
             <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
               <div>

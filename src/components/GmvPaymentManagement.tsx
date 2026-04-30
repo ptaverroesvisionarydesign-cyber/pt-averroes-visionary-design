@@ -18,11 +18,15 @@ import {
   Briefcase,
   MapPin,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Printer
 } from 'lucide-react';
-import { User, UserRole } from '../types';
+import { User, UserRole, DataPelakuUsaha } from '../types';
 import { cn } from '../lib/utils';
 import UserDetailModal from './UserDetailModal';
+import { dataService } from '../services/dataService';
+import { useAuth } from '../AuthContext';
+import { useNotifications } from '../NotificationContext';
 
 interface PaymentUser {
   id: string;
@@ -41,13 +45,29 @@ interface PaymentHistory {
   jumlah: number;
 }
 
-const MOCK_USERS: PaymentUser[] = [
-  { id: '1', name: 'Budi (Lapangan 1)', role: 'lapangan', totalGmv: 4500000, dibayar: 2000000, sisaHutang: 2500000 },
-  { id: '2', name: 'Siti (Olah Data 1)', role: 'olahdata', totalGmv: 3000000, dibayar: 1000000, sisaHutang: 2000000 },
-];
-
 export default function GmvPaymentManagement() {
-  const [users, setUsers] = useState<PaymentUser[]>(MOCK_USERS);
+  const { user: currentUser } = useAuth();
+  const { addNotification } = useNotifications();
+  const allUsers = dataService.getUsers();
+  const dataList = dataService.getDataList() as DataPelakuUsaha[];
+  
+  // Map real users to PaymentUser format
+  const initialUsers: PaymentUser[] = allUsers
+    .filter(u => u.role === UserRole.DATLAP || u.role === UserRole.OLDAT)
+    .map(u => {
+      const totalGmv = dataService.calculateUserGmv(u, dataList);
+      // For demo, we'll assume some history or just 0 if no history
+      return {
+        id: u.id,
+        name: u.name,
+        role: u.role === UserRole.DATLAP ? 'lapangan' : 'olahdata',
+        totalGmv: totalGmv,
+        dibayar: 0, // In a real app this would come from a payment store
+        sisaHutang: totalGmv
+      };
+    });
+
+  const [users, setUsers] = useState<PaymentUser[]>(initialUsers);
   const [history, setHistory] = useState<PaymentHistory[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -60,18 +80,10 @@ export default function GmvPaymentManagement() {
   const [method, setMethod] = useState('Transfer Bank');
 
   const handleOpenDetail = (pUser: PaymentUser) => {
-    // Map PaymentUser to User type for the modal
-    const mockUser: User = {
-      id: pUser.id,
-      name: pUser.name,
-      email: `${pUser.name.toLowerCase().replace(/\s/g, '.')}@halal.id`,
-      role: pUser.role === 'lapangan' ? UserRole.DATLAP : UserRole.OLDAT,
-      status: 'Aktif',
-      joinDate: '2025-01-10',
-      lastLogin: '2026-04-29 08:00',
-      kodeWilayah: 'LEUWISARI'
-    };
-    setSelectedUserForDetail(mockUser);
+    const realUser = allUsers.find(u => u.id === pUser.id);
+    if (!realUser) return;
+    
+    setSelectedUserForDetail(realUser);
     setIsDetailModalOpen(true);
   };
 
@@ -100,6 +112,16 @@ export default function GmvPaymentManagement() {
     };
     setHistory(prev => [newHistory, ...prev]);
 
+    addNotification({
+      title: 'Pembayaran Berhasil',
+      message: `Hutang ${user.name} sebesar Rp ${paymentAmount.toLocaleString('id-ID')} telah dibayar.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'PAYMENT',
+      userId: currentUser?.id || 'system',
+      targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN]
+    });
+
     // Show success and close modal
     setIsSuccess(true);
     setTimeout(() => {
@@ -110,6 +132,156 @@ export default function GmvPaymentManagement() {
       setAmount('');
       setMethod('Transfer Bank');
     }, 2000);
+  };
+
+  const handlePrintSlip = (pUser: PaymentUser) => {
+    const realUser = allUsers.find(u => u.id === pUser.id);
+    if (!realUser) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const transactionId = Math.random().toString(36).substr(2, 10).toUpperCase();
+    const printDate = new Date().toLocaleString('id-ID');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Slip Pembayaran GMV - ${pUser.name}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              color: #1e293b;
+              line-height: 1.5;
+            }
+            .container { 
+              max-width: 500px; 
+              margin: 0 auto; 
+              border: 2px solid #f1f5f9;
+              padding: 40px;
+              border-radius: 24px;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px;
+              border-bottom: 2px dashed #e2e8f0;
+              padding-bottom: 20px;
+            }
+            .header h1 { 
+              margin: 0; 
+              font-size: 24px; 
+              font-weight: 900; 
+              letter-spacing: -0.025em;
+              text-transform: uppercase;
+            }
+            .header p { margin: 5px 0 0; color: #64748b; font-size: 12px; font-weight: 700; }
+            .item { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-bottom: 12px; 
+              font-size: 14px;
+            }
+            .label { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+            .value { font-weight: 800; text-align: right; }
+            .divider { border-top: 1px solid #f1f5f9; margin: 20px 0; }
+            .total-row { 
+              background: #f8fafc; 
+              padding: 15px; 
+              border-radius: 12px;
+              margin-top: 20px;
+            }
+            .footer { 
+              text-align: center; 
+              margin-top: 30px; 
+              color: #94a3b8; 
+              font-size: 10px;
+              font-weight: 600;
+            }
+            .stamp {
+              margin-top: 30px;
+              text-align: center;
+              font-weight: 900;
+              color: #10b981;
+              border: 3px solid #10b981;
+              display: inline-block;
+              padding: 5px 15px;
+              transform: rotate(-5deg);
+              text-transform: uppercase;
+              border-radius: 8px;
+            }
+            @media print {
+              body { padding: 0; }
+              .container { border: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Slip Pembayaran GMV</h1>
+              <p>Sistem Terpadu Data Pelaku Usaha (SATDAPUS)</p>
+            </div>
+            
+            <div class="item">
+              <span class="label">ID Transaksi</span>
+              <span class="value">#${transactionId}</span>
+            </div>
+            <div class="item">
+              <span class="label">Tanggal Cetak</span>
+              <span class="value">${printDate}</span>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="item">
+              <span class="label">Nama Penerima</span>
+              <span class="value">${pUser.name}</span>
+            </div>
+            <div class="item">
+              <span class="label">Role Pendamping</span>
+              <span class="value uppercase">${pUser.role}</span>
+            </div>
+            <div class="item">
+              <span class="label">Wilayah Kerja</span>
+              <span class="value">${realUser.kodeWilayah || '-'}</span>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="item">
+              <span class="label">Total Akumulasi GMV</span>
+              <span class="value">Rp ${pUser.totalGmv.toLocaleString('id-ID')}</span>
+            </div>
+            <div class="item">
+              <span class="label">Sudah Dibayarkan</span>
+              <span class="value" style="color: #059669;">Rp ${pUser.dibayar.toLocaleString('id-ID')}</span>
+            </div>
+            
+            <div class="total-row">
+              <div class="item" style="margin-bottom: 0;">
+                <span class="label" style="color: #e11d48;">Sisa Pembayaran</span>
+                <span class="value" style="color: #e11d48; font-size: 18px;">Rp ${pUser.sisaHutang.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+              <div class="stamp">LUNAS / TERVERIFIKASI</div>
+            </div>
+
+            <div class="footer">
+              Dicetak secara otomatis oleh sistem SATDAPUS.<br>
+              Simpan slip ini sebagai bukti pembayaran yang sah.
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   return (
@@ -181,13 +353,25 @@ export default function GmvPaymentManagement() {
                 </div>
               </div>
 
-              <button 
-                onClick={() => handleOpenDetail(item)}
-                className="mt-8 w-full py-4 bg-slate-50 rounded-2xl text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center gap-2"
-              >
-                Lihat Detail Akun
-                <ChevronRight size={14} />
-              </button>
+              <div className="flex flex-col gap-3 mt-8">
+                <button 
+                  onClick={() => handleOpenDetail(item)}
+                  className="w-full py-4 bg-slate-50 rounded-2xl text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center gap-2"
+                >
+                  Lihat Detail Akun
+                  <ChevronRight size={14} />
+                </button>
+
+                {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.ADMIN) && (
+                  <button 
+                    onClick={() => handlePrintSlip(item)}
+                    className="w-full py-4 bg-purple-50 border border-purple-100 rounded-2xl text-purple-600 font-black text-xs uppercase tracking-widest hover:bg-purple-100 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Printer size={14} />
+                    Cetak Slip Pembayaran
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
         ))}
