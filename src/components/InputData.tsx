@@ -6,6 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { format } from 'date-fns';
 import { 
   Camera, 
   Upload, 
@@ -145,12 +146,26 @@ export default function InputData() {
     setIsSubmitting(true);
     // Simulate submit
     setTimeout(() => {
+      const now = format(new Date(), 'dd-MM-yyyy HH:mm');
       const dataToSave = {
         id: editingId || Math.random().toString(36).substr(2, 9),
         ...formData,
         statusProses: 'Proses pengajuan',
+        status_pengolahan: 'Belum Diambil',
         timestamp: new Date().toLocaleDateString('id-ID'),
         createdBy: user?.id,
+        createdByName: user?.name,
+        createdRole: user?.role,
+        updatedAt: now,
+        processHistory: [
+          { 
+            user: user?.id || 'unknown', 
+            userName: user?.name || 'Unknown', 
+            role: user?.role || UserRole.USER, 
+            action: editingId ? 'edit' : 'input', 
+            time: now 
+          }
+        ],
         fotoNikUrl: formData.fotoNik,
         fotoProdukUrls: [formData.fotoProduk, formData.fotoSupervisor].filter(Boolean)
       };

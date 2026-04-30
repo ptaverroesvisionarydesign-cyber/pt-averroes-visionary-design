@@ -88,15 +88,27 @@ export default function Dashboard() {
              <NotificationDropdown />
              <div className="md:hidden text-[9px] font-black text-slate-400 uppercase tracking-widest">Akses Cepat</div>
           </div>
-          <div className="bg-slate-900 px-5 py-3 sm:px-6 sm:py-2.5 rounded-[1.5rem] shadow-xl shadow-purple-200 text-white flex items-center gap-4 relative overflow-hidden group flex-1 sm:flex-none">
-            <div className="absolute -right-4 -top-4 w-20 h-20 bg-purple-500/20 rounded-full blur-2xl group-hover:bg-purple-500/30 transition-all"></div>
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white relative z-10 shrink-0">
-              <DollarSign size={16} />
+          <div className="bg-slate-900 border border-slate-800 px-5 py-3 sm:px-6 sm:py-2.5 rounded-[1.5rem] shadow-2xl shadow-purple-900/20 text-white flex items-center gap-4 relative overflow-hidden group flex-1 sm:flex-none">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/20 rounded-full blur-2xl group-hover:bg-primary/40 transition-all duration-700 animate-pulse"></div>
+            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white relative z-10 shrink-0 shadow-lg shadow-primary/20">
+              <DollarSign size={20} className="group-hover:scale-110 transition-transform" />
             </div>
             <div className="relative z-10 w-full">
-              <div className="text-[9px] font-bold text-purple-300 uppercase tracking-widest">Total GMV Anda</div>
-              <div className="text-lg sm:text-xl font-black text-white leading-none">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[9px] font-black text-purple-400 uppercase tracking-[0.15em]">Estimasi GMV</div>
+                {user && (
+                   <div className="text-[8px] font-black text-slate-500 uppercase bg-slate-800/50 px-1.5 py-0.5 rounded leading-none border border-slate-700/50">
+                    {user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN ? `${(dataService.getGmvSettings().superAdmin/1000).toFixed(1)}k` : 
+                     user.role === UserRole.DATLAP ? `${(dataService.getGmvSettings().datlap/1000).toFixed(1)}k` : `${(dataService.getGmvSettings().oldat/1000).toFixed(1)}k`} / data
+                   </div>
+                )}
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tighter mt-0.5">
                 Rp {myGmv.toLocaleString('id-ID')}
+              </div>
+              <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
+                <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
+                Berdasarkan Sertifikat Terbit
               </div>
             </div>
           </div>

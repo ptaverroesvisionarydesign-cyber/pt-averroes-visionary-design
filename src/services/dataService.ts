@@ -4,15 +4,18 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { DataPelakuUsaha, StatusProses, UserRole, User, Kbli, Wilayah } from "../types";
+import { DataPelakuUsaha, StatusProses, UserRole, User, Kbli, Wilayah, ProcessLog } from "../types";
 import { format } from "date-fns";
 
-console.log("ENV:", import.meta.env);
-console.log("API KEY:", import.meta.env.VITE_API_KEY);
-const ai = new GoogleGenAI({
-  apiKey: import.meta.env.VITE_API_KEY
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 // Centralized Store (Simulated for this demo)
+let gmvSettingsStore = {
+  superAdmin: 142500,
+  oldat: 35000,
+  datlap: 15000
+};
+
 let notificationsStore: any[] = [
   { id: '1', title: 'Update Sistem v2.1', message: 'Fitur manajemen user super admin telah diaktifkan.', time: '2 menit yang lalu', isRead: false, type: 'system' },
   { id: '2', title: 'Data Baru Masuk', message: 'Bpk. Junaedi telah mendaftarkan produk baru.', time: '1 jam yang lalu', isRead: true, type: 'data' },
@@ -43,9 +46,100 @@ let usersStore: User[] = [
 
 // Initial Data List
 let dataListStore: Partial<DataPelakuUsaha>[] = [
-  { id: '1', namaPelakuUsaha: 'Bpk. Junaedi', nik: '3201012345678901', statusProses: 'Proses Pengolahan NIB & Halal', noHp: '08123456789', timestamp: '26-04-2026', namaProduk: 'Kerupuk Pisang', namaMerek: 'Juna Snack', kecamatan: 'Leuwisari', kbliId: '3', cleaningAgent: 'Sunlight', kemasan: 'Plastik PP', bahanBaku: 'Pisang, Tepung, Gula, Garam', prosesProduksi: '1. Kupas pisang, 2. Iris tipis, 3. Campur bumbu, 4. Goreng hingga matang.', emailTemp: 'junaedi.halal@gmail.com', passwordHash: 'HALAL123', nib: '9120001234567' },
-  { id: '2', namaPelakuUsaha: 'Ibu Siti', nik: '3201019876543210', statusProses: 'Verifikasi BPJPH', noHp: '08571234567', timestamp: '25-04-2026', namaProduk: 'Peyek Kacang', namaMerek: 'Siti Peyek', kecamatan: 'Ciawi', kbliId: '3', cleaningAgent: 'Mama Lemon', kemasan: 'Plastik Mika', bahanBaku: 'Kacang Tanah, Tepung Beras, Santan', prosesProduksi: '1. Rebus santan, 2. Campur tepung, 3. Masukkan kacang, 4. Goreng per sendok.', emailTemp: 'siti.halal@gmail.com', passwordHash: 'PEYEK88', nib: '9120009876543' },
-  { id: '3', namaPelakuUsaha: 'Bpk. Ahmad', nik: '3201011122334455', statusProses: 'terbit sertifikat halal', noHp: '08139988776', timestamp: '24-04-2026', namaProduk: 'Kripik Singkong', namaMerek: 'Ahmad Chips', kecamatan: 'Leuwisari', kbliId: '3', cleaningAgent: 'Sunlight', kemasan: 'Standing Pouch', bahanBaku: 'Singkong, Minyak Goreng, Penyedap', prosesProduksi: '1. Pilih singkong, 2. Iris, 3. Rendam bumbu, 4. Goreng garing.', emailTemp: 'ahmad.halal@gmail.com', passwordHash: 'SINGKONG1', nib: '9120005544332' },
+  { 
+    id: '1', 
+    createdBy: '3', 
+    createdByName: 'Badu Datlap', 
+    createdRole: UserRole.DATLAP,
+    pendampingOlahDataId: '4', 
+    processedByOldat: '4',
+    processedByName: 'Siti Oldat',
+    processedAt: '28-04-2026',
+    namaPelakuUsaha: 'Bpk. Junaedi', 
+    nik: '3201012345678901', 
+    statusProses: 'Proses Pengolahan NIB & Halal', 
+    noHp: '08123456789', 
+    timestamp: '26-04-2026', 
+    namaProduk: 'Kerupuk Pisang', 
+    namaMerek: 'Juna Snack', 
+    kecamatan: 'Leuwisari', 
+    kbliId: '3', 
+    cleaningAgent: 'Sunlight', 
+    kemasan: 'Plastik PP', 
+    bahanBaku: 'Pisang, Tepung, Gula, Garam', 
+    prosesProduksi: '1. Kupas pisang, 2. Iris tipis, 3. Campur bumbu, 4. Goreng hingga matang.', 
+    emailTemp: 'junaedi.halal@gmail.com', 
+    passwordHash: 'HALAL123', 
+    nib: '9120001234567',
+    status_pengolahan: 'Sudah Diambil',
+    diambil_oleh_id: '4',
+    diambil_oleh_name: 'Siti Oldat',
+    waktu_diambil: '28-04-2026 09:00',
+    processHistory: [
+      { user: '3', userName: 'Badu Datlap', role: UserRole.DATLAP, action: 'input', time: '26-04-2026 10:00' },
+      { user: '4', userName: 'Siti Oldat', role: UserRole.OLDAT, action: 'edit', time: '28-04-2026 09:00' }
+    ]
+  },
+  { 
+    id: '2', 
+    createdBy: '3', 
+    createdByName: 'Badu Datlap', 
+    createdRole: UserRole.DATLAP,
+    pendampingOlahDataId: '4', 
+    processedByOldat: '4',
+    processedByName: 'Siti Oldat',
+    processedAt: '29-04-2026',
+    namaPelakuUsaha: 'Ibu Siti', 
+    nik: '3201019876543210', 
+    statusProses: 'Verifikasi BPJPH', 
+    noHp: '08571234567', 
+    timestamp: '25-04-2026', 
+    namaProduk: 'Peyek Kacang', 
+    namaMerek: 'Siti Peyek', 
+    kecamatan: 'Ciawi', 
+    kbliId: '3', 
+    cleaningAgent: 'Mama Lemon', 
+    kemasan: 'Plastik Mika', 
+    bahanBaku: 'Kacang Tanah, Tepung Beras, Santan', 
+    prosesProduksi: '1. Rebus santan, 2. Campur tepung, 3. Masukkan kacang, 4. Goreng per sendok.', 
+    emailTemp: 'siti.halal@gmail.com', 
+    passwordHash: 'PEYEK88', 
+    nib: '9120009876543',
+    status_pengolahan: 'Sudah Diambil',
+    diambil_oleh_id: '4',
+    diambil_oleh_name: 'Siti Oldat',
+    waktu_diambil: '29-04-2026 11:00',
+    processHistory: [
+      { user: '3', userName: 'Badu Datlap', role: UserRole.DATLAP, action: 'input', time: '25-04-2026 14:00' },
+      { user: '4', userName: 'Siti Oldat', role: UserRole.OLDAT, action: 'verifikasi', time: '29-04-2026 11:00' }
+    ]
+  },
+  { 
+    id: '3', 
+    createdBy: '5', 
+    createdByName: 'Budi Datlap', 
+    createdRole: UserRole.DATLAP,
+    namaPelakuUsaha: 'Bpk. Ahmad', 
+    nik: '3201011122334455', 
+    statusProses: 'terbit sertifikat halal', 
+    noHp: '08139988776', 
+    timestamp: '24-04-2026', 
+    namaProduk: 'Kripik Singkong', 
+    namaMerek: 'Ahmad Chips', 
+    kecamatan: 'Leuwisari', 
+    kbliId: '3', 
+    cleaningAgent: 'Sunlight', 
+    kemasan: 'Standing Pouch', 
+    bahanBaku: 'Singkong, Minyak Goreng, Penyedap', 
+    prosesProduksi: '1. Pilih singkong, 2. Iris, 3. Rendam bumbu, 4. Goreng garing.', 
+    emailTemp: 'ahmad.halal@gmail.com', 
+    passwordHash: 'SINGKONG1', 
+    nib: '9120005544332',
+    status_pengolahan: 'Belum Diambil',
+    processHistory: [
+      { user: '5', userName: 'Budi Datlap', role: UserRole.DATLAP, action: 'input', time: '24-04-2026 09:30' }
+    ]
+  },
 ];
 
 export const dataService = {
@@ -111,8 +205,75 @@ export const dataService = {
     usersStore = usersStore.filter(u => u.id !== id);
   },
 
+  // Data List Management
+  deleteData: (id: string) => {
+    dataListStore = dataListStore.filter(d => d.id !== id);
+  },
+
   // Notification Management
   getNotifications: () => notificationsStore,
+  
+  // Tracking & Metadata
+  updateDataMetadata: (data: DataPelakuUsaha, user: any, action: string) => {
+    const now = format(new Date(), 'dd-MM-yyyy HH:mm');
+    const updatedData: Partial<DataPelakuUsaha> = {
+      updatedAt: now,
+    };
+
+    if (user.role === UserRole.OLDAT) {
+      updatedData.processedByOldat = user.id;
+      updatedData.processedByName = user.name;
+      updatedData.processedAt = now;
+      updatedData.pendampingOlahDataId = user.id;
+      // If OLDAT is editing, we assume they took it or it becomes taken
+      updatedData.status_pengolahan = 'Sudah Diambil';
+      updatedData.diambil_oleh_id = user.id;
+      updatedData.diambil_oleh_name = user.name;
+    }
+
+    const newLog: ProcessLog = {
+      user: user.id,
+      userName: user.name,
+      role: user.role,
+      action: action,
+      time: now
+    };
+
+    updatedData.processHistory = [...(data.processHistory || []), newLog];
+
+    return { ...data, ...updatedData };
+  },
+
+  takeData: (id: string, user: User) => {
+    const now = format(new Date(), 'dd-MM-yyyy HH:mm');
+    dataListStore = dataListStore.map(d => {
+      if (d.id !== id) return d;
+      
+      const history = [...(d.processHistory || [])];
+      history.push({
+        user: user.id,
+        userName: user.name,
+        role: user.role,
+        action: 'Ambil Data',
+        time: now
+      });
+
+      return {
+        ...d,
+        status_pengolahan: 'Sudah Diambil',
+        diambil_oleh_id: user.id,
+        diambil_oleh_name: user.name,
+        waktu_diambil: now,
+        processedByOldat: user.id,
+        processedByName: user.name,
+        processedAt: now,
+        pendampingOlahDataId: user.id,
+        updatedAt: now,
+        processHistory: history
+      };
+    });
+  },
+
   addNotification: (notification: any) => {
     const newNotif = { 
       ...notification, 
@@ -158,18 +319,35 @@ export const dataService = {
   },
 
   // Calculate GMV
+  getGmvSettings: () => gmvSettingsStore,
+  updateGmvSettings: (settings: typeof gmvSettingsStore) => {
+    gmvSettingsStore = { ...settings };
+  },
   calculateUserGmv: (user: User, dataList: DataPelakuUsaha[]) => {
-    if (user.role === UserRole.DATLAP) {
-      const count = dataList.filter(d => d.createdBy === user.id).length;
-      return count * 15000;
+    const isHalalTerbit = (status?: string) => 
+      status?.toLowerCase() === 'halal terbit' || 
+      status?.toLowerCase() === 'terbit sertifikat halal';
+
+    // Logika GMV sesuai pengaturan:
+    const settings = gmvSettingsStore;
+    
+    if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) {
+      const count = dataList.filter(d => isHalalTerbit(d.statusProses)).length;
+      return count * settings.superAdmin;
     }
+
+    if (user.role === UserRole.DATLAP) {
+      const count = dataList.filter(d => d.createdBy === user.id && isHalalTerbit(d.statusProses)).length;
+      return count * settings.datlap;
+    }
+
     if (user.role === UserRole.OLDAT) {
       const count = dataList.filter(d => 
-        d.pendampingOlahDataId === user.id && 
-        (d.statusProses === 'Proses Pengolahan NIB & Halal' || d.statusProses === 'Halal Terbit')
+        d.pendampingOlahDataId === user.id && isHalalTerbit(d.statusProses)
       ).length;
-      return count * 35000;
+      return count * settings.oldat;
     }
+
     return 0;
   },
 

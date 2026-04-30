@@ -19,7 +19,9 @@ import {
   X,
   CreditCard,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  DollarSign,
+  MessageSquare
 } from 'lucide-react';
 import { UserRole } from './types';
 import { cn } from './lib/utils';
@@ -29,6 +31,8 @@ import Dashboard from './components/Dashboard';
 import InputData from './components/InputData';
 import DataListView from './components/DataListView';
 import AdminSettings from './components/AdminSettings';
+import GmvSettings from './components/GmvSettings';
+import ChatGroup from './components/ChatGroup';
 import GmvPaymentManagement from './components/GmvPaymentManagement';
 import Statistik from './components/Statistik';
 
@@ -43,8 +47,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT] },
     { name: 'Input Data', path: '/input', icon: FileText, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP] },
     { name: 'Data List', path: '/data', icon: Database, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT] },
+    { name: 'Chat Grup', path: '/chat', icon: MessageSquare, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT] },
     { name: 'Statistik', path: '/stats', icon: BarChart3, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] },
     { name: 'Pembayaran', path: '/payment', icon: CreditCard, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] },
+    { name: 'Pengaturan GMV', path: '/gmv-settings', icon: DollarSign, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] },
     { name: 'Pengaturan Admin', path: '/admin-settings', icon: ShieldCheck, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] },
   ].filter(item => item.roles.includes(user?.role as UserRole));
 
@@ -54,8 +60,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-64 lg:w-72 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen shrink-0">
         <div className="p-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-purple-glow">
-              <Database size={24} className="text-white" />
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
             <span className="text-xl font-bold tracking-tight text-purple-900">SATDAPUS</span>
           </div>
@@ -105,8 +111,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Header - Mobile */}
       <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-purple-glow">
-            <Database size={16} className="text-white" />
+          <div className="w-8 h-8 flex items-center justify-center">
+            <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <span className="text-lg font-black tracking-tighter text-slate-900">SATDAPUS</span>
         </div>
@@ -141,8 +147,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="p-8 border-b border-slate-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-purple-glow">
-                      <Database size={24} className="text-white" />
+                    <div className="w-10 h-10 flex items-center justify-center">
+                      <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                     </div>
                     <span className="text-xl font-bold tracking-tight text-purple-900">SATDAPUS</span>
                   </div>
@@ -216,7 +222,9 @@ function MainRoutes() {
           transition={{ repeat: Infinity, duration: 1.5 }}
           className="flex flex-col items-center"
         >
-          <Database size={48} className="mb-4" />
+          <div className="w-20 h-20 mb-4">
+            <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+          </div>
           <span className="font-black text-xl tracking-widest">SATDAPUS</span>
         </motion.div>
       </div>
@@ -233,9 +241,11 @@ function MainRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/input" element={(user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN || user.role === UserRole.DATLAP) ? <InputData /> : <Navigate to="/" />} />
         <Route path="/data" element={<DataListView />} />
+        <Route path="/chat" element={<ChatGroup />} />
 
         <Route path="/stats" element={(user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? <Statistik /> : <Navigate to="/" />} />
         <Route path="/payment" element={(user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? <GmvPaymentManagement /> : <Navigate to="/" />} />
+        <Route path="/gmv-settings" element={(user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? <GmvSettings /> : <Navigate to="/" />} />
         <Route path="/admin-settings" element={(user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? <AdminSettings /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

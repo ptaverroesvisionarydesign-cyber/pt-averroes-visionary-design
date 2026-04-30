@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['senderId', 'senderName', 'senderRole', 'message', 'timestamp'])
+             && data.senderId is string && data.senderId.size() <= 128
+             && data.senderName is string && data.senderName.size() <= 100
+             && data.senderRole is string && data.senderRole.size() <= 20
+             && data.message is string && data.message.size() <= 10000
+             && data.timestamp is string && data.timestamp.size() <= 100
+             && (data.keys().size() <= 9) // Adding room for optional file fields
+             && (!data.keys().contains('fileUrl') || (data.fileUrl is string && data.fileUrl.size() <= 2000))
+             && (!data.keys().contains('fileName') || (data.fileName is string && data.fileName.size() <= 255))
+             && (!data.keys().contains('fileType') || (data.fileType is string && data.fileType.size() <= 100));
+    }
+
+    match /messages/{messageId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && isValidId(messageId);
+      
+      allow create: if isSignedIn() 
+                    && isValidId(messageId)
+                    && isValidMessage(incoming())
+                    && incoming().senderId == request.auth.uid;
+      
+      // Usually users can't edit messages once sent in this specific app logic request
+      // But we can allow it if the senderId matches
+      allow update: if isSignedIn()
+                    && isValidId(messageId)
+                    && isValidMessage(incoming())
+                    && existing().senderId == request.auth.uid
+                    && incoming().senderId == existing().senderId;
+      
+      allow delete: if isSignedIn()
+                    && (existing().senderId == request.auth.uid);
+    }
+  }
+}

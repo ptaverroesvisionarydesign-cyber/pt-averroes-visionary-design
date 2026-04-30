@@ -1,73 +1,27 @@
 {
   "entities": {
-    "User": {
-      "title": "User Account",
-      "description": "System users with specific roles",
+    "Message": {
+      "title": "Message",
+      "description": "A message in the group chat",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string" },
-        "role": { "enum": ["ADMIN", "DATLAP", "OLDAT"] },
-        "status": { "type": "string" }
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "message": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "email", "role"]
-    },
-    "DataPelakuUsaha": {
-      "title": "Main Data",
-      "description": "Master data for business actors",
-      "type": "object",
-      "properties": {
-        "timestamp": { "type": "string", "format": "date-time" },
-        "noHp": { "type": "string" },
-        "namaPelakuUsaha": { "type": "string" },
-        "nik": { "type": "string" },
-        "alamat": { "type": "string" },
-        "statusProses": { "type": "string" },
-        "createdBy": { "type": "string" }
-      },
-      "required": ["namaPelakuUsaha", "nik", "noHp"]
-    },
-    "Gmv": {
-      "title": "GMV Records",
-      "description": "Tracks incentives for assistants",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "totalGmv": { "type": "number" }
-      }
-    },
-    "Pembayaran": {
-      "title": "Payment Tracking",
-      "description": "Records of payments to assistants",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "jumlahDibayar": { "type": "number" },
-        "status": { "type": "string" }
-      }
+      "required": ["senderId", "senderName", "senderRole", "timestamp"]
     }
   },
   "firestore": {
-    "/data_utama/{id}": {
-      "schema": "DataPelakuUsaha",
-      "description": "Main business actor documents"
-    },
-    "/users/{id}": {
-      "schema": "User",
-      "description": "Application users"
-    },
-    "/gmv/{id}": {
-      "schema": "Gmv",
-      "description": "Incentive calculation data"
-    },
-    "/pembayaran/{id}": {
-      "schema": "Pembayaran",
-      "description": "Financial payment records"
-    },
-    "/referensi/{id}": {
-      "schema": "object",
-      "description": "Reference data like KBLI"
+    "/messages": {
+      "schema": "Message",
+      "description": "All chat messages for the global group"
     }
   }
 }

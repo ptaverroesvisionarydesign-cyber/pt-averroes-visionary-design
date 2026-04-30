@@ -37,8 +37,8 @@ export default function LoginPage() {
       >
         <div className="bg-primary p-10 text-center text-white relative overflow-hidden">
           <div className="absolute -left-4 -top-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md shadow-lg">
-            <ShieldCheck className="h-10 w-10" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center">
+            <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain filter drop-shadow-lg" referrerPolicy="no-referrer" />
           </div>
           <h1 className="text-3xl font-black tracking-tight uppercase">SATDAPUS</h1>
           <p className="mt-1 text-xs font-bold text-purple-100 opacity-80 uppercase tracking-widest">Satu Data Pelaku Usaha</p>

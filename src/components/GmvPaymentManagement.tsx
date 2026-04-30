@@ -53,14 +53,19 @@ export default function GmvPaymentManagement() {
   
   // Map real users to PaymentUser format
   const initialUsers: PaymentUser[] = allUsers
-    .filter(u => u.role === UserRole.DATLAP || u.role === UserRole.OLDAT)
+    .filter(u => [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT].includes(u.role))
     .map(u => {
       const totalGmv = dataService.calculateUserGmv(u, dataList);
-      // For demo, we'll assume some history or just 0 if no history
+      let roleLabel = '';
+      if (u.role === UserRole.SUPER_ADMIN) roleLabel = 'super admin';
+      else if (u.role === UserRole.ADMIN) roleLabel = 'admin';
+      else if (u.role === UserRole.DATLAP) roleLabel = 'lapangan';
+      else if (u.role === UserRole.OLDAT) roleLabel = 'olahdata';
+
       return {
         id: u.id,
         name: u.name,
-        role: u.role === UserRole.DATLAP ? 'lapangan' : 'olahdata',
+        role: roleLabel,
         totalGmv: totalGmv,
         dibayar: 0, // In a real app this would come from a payment store
         sisaHutang: totalGmv
@@ -142,141 +147,262 @@ export default function GmvPaymentManagement() {
     if (!printWindow) return;
 
     const transactionId = Math.random().toString(36).substr(2, 10).toUpperCase();
-    const printDate = new Date().toLocaleString('id-ID');
+    const printDate = new Date().toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Slip Pembayaran GMV - ${pUser.name}</title>
+          <title>Slip GMV - ${pUser.name}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-            body { 
-              font-family: 'Inter', sans-serif; 
-              padding: 40px; 
-              color: #1e293b;
-              line-height: 1.5;
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+            * { box-sizing: border-box; }
+            @page {
+              size: A6;
+              margin: 0;
             }
-            .container { 
-              max-width: 500px; 
-              margin: 0 auto; 
-              border: 2px solid #f1f5f9;
-              padding: 40px;
-              border-radius: 24px;
+            body { 
+              font-family: 'Inter', -apple-system, sans-serif; 
+              padding: 0; 
+              margin: 0;
+              color: #0f172a;
+              background-color: #ffffff;
+              -webkit-print-color-adjust: exact;
+            }
+            .page {
+              width: 105mm;
+              height: 148mm;
+              padding: 8mm;
+              margin: 0 auto;
+              position: relative;
+              background: white;
+              overflow: hidden;
+              display: flex;
+              flex-direction: column;
             }
             .header { 
-              text-align: center; 
-              margin-bottom: 30px;
-              border-bottom: 2px dashed #e2e8f0;
-              padding-bottom: 20px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 12px;
+              border-bottom: 2px solid #0f172a;
+              padding-bottom: 8px;
             }
-            .header h1 { 
+            .brand h1 { 
               margin: 0; 
-              font-size: 24px; 
+              font-size: 16px; 
               font-weight: 900; 
-              letter-spacing: -0.025em;
-              text-transform: uppercase;
+              letter-spacing: -0.05em;
+              color: #0f172a;
             }
-            .header p { margin: 5px 0 0; color: #64748b; font-size: 12px; font-weight: 700; }
-            .item { 
-              display: flex; 
-              justify-content: space-between; 
-              margin-bottom: 12px; 
-              font-size: 14px;
-            }
-            .label { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
-            .value { font-weight: 800; text-align: right; }
-            .divider { border-top: 1px solid #f1f5f9; margin: 20px 0; }
-            .total-row { 
-              background: #f8fafc; 
-              padding: 15px; 
-              border-radius: 12px;
-              margin-top: 20px;
-            }
-            .footer { 
-              text-align: center; 
-              margin-top: 30px; 
-              color: #94a3b8; 
-              font-size: 10px;
+            .brand p { 
+              margin: 2px 0 0; 
+              color: #64748b; 
+              font-size: 7px; 
               font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            .invoice-title {
+              text-align: right;
+            }
+            .invoice-title h2 { 
+              margin: 0; 
+              font-size: 10px; 
+              font-weight: 900; 
+              color: #6366f1;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+            }
+            .invoice-title p { margin: 2px 0 0; color: #94a3b8; font-size: 7px; font-weight: 700; }
+            
+            .info-grid {
+              display: grid;
+              grid-template-cols: 1fr 1fr;
+              gap: 15px;
+              margin-bottom: 15px;
+            }
+            .info-section h3 {
+              font-size: 6px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              color: #94a3b8;
+              margin-bottom: 4px;
+              border-bottom: 1px solid #f1f5f9;
+              padding-bottom: 2px;
+            }
+            .info-content {
+              font-size: 9px;
+              font-weight: 700;
+              color: #1e293b;
+              line-height: 1.2;
+            }
+            .info-content span { font-weight: 400; color: #64748b; display: block; font-size: 7.5px; margin-top: 1px; }
+
+            .table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 15px;
+            }
+            .table th {
+              text-align: left;
+              font-size: 6px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              color: #64748b;
+              padding: 5px 8px;
+              border-bottom: 1.5px solid #f1f5f9;
+            }
+            .table td {
+              padding: 8px 8px;
+              border-bottom: 1px solid #f1f5f9;
+              font-size: 8.5px;
+              font-weight: 700;
+            }
+            .table td .desc { font-weight: 400; color: #64748b; font-size: 7px; margin-top: 2px; }
+
+            .totals {
+              margin-left: auto;
+              width: 100%;
+              max-width: 180px;
+            }
+            .total-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 4px 0;
+              font-size: 8.5px;
+            }
+            .total-row.grand {
+              border-top: 1.5px solid #0f172a;
+              margin-top: 4px;
+              padding-top: 8px;
+              font-size: 11px;
+              font-weight: 900;
+            }
+            .label { font-weight: 600; color: #64748b; }
+            .amount { font-weight: 800; text-align: right; }
+
+            .stamp-container {
+              margin-top: 10px;
+              position: relative;
+              text-align: center;
             }
             .stamp {
-              margin-top: 30px;
-              text-align: center;
-              font-weight: 900;
+              border: 2px solid #10b981;
               color: #10b981;
-              border: 3px solid #10b981;
               display: inline-block;
-              padding: 5px 15px;
-              transform: rotate(-5deg);
+              padding: 4px 12px;
+              font-weight: 900;
+              font-size: 10px;
               text-transform: uppercase;
-              border-radius: 8px;
+              border-radius: 2px;
+              transform: rotate(-8deg);
+              opacity: 0.7;
             }
+            
+            .footer {
+              margin-top: auto;
+              text-align: center;
+              font-size: 7px;
+              color: #94a3b8;
+              border-top: 1px solid #f1f5f9;
+              padding-top: 8px;
+              line-height: 1.4;
+            }
+
             @media print {
-              body { padding: 0; }
-              .container { border: none; }
+              body { background: white; }
+              .page { margin: 0; box-shadow: none; }
             }
           </style>
         </head>
         <body>
-          <div class="container">
+          <div class="page">
             <div class="header">
-              <h1>Slip Pembayaran GMV</h1>
-              <p>Sistem Terpadu Data Pelaku Usaha (SATDAPUS)</p>
-            </div>
-            
-            <div class="item">
-              <span class="label">ID Transaksi</span>
-              <span class="value">#${transactionId}</span>
-            </div>
-            <div class="item">
-              <span class="label">Tanggal Cetak</span>
-              <span class="value">${printDate}</span>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="item">
-              <span class="label">Nama Penerima</span>
-              <span class="value">${pUser.name}</span>
-            </div>
-            <div class="item">
-              <span class="label">Role Pendamping</span>
-              <span class="value uppercase">${pUser.role}</span>
-            </div>
-            <div class="item">
-              <span class="label">Wilayah Kerja</span>
-              <span class="value">${realUser.kodeWilayah || '-'}</span>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="item">
-              <span class="label">Total Akumulasi GMV</span>
-              <span class="value">Rp ${pUser.totalGmv.toLocaleString('id-ID')}</span>
-            </div>
-            <div class="item">
-              <span class="label">Sudah Dibayarkan</span>
-              <span class="value" style="color: #059669;">Rp ${pUser.dibayar.toLocaleString('id-ID')}</span>
-            </div>
-            
-            <div class="total-row">
-              <div class="item" style="margin-bottom: 0;">
-                <span class="label" style="color: #e11d48;">Sisa Pembayaran</span>
-                <span class="value" style="color: #e11d48; font-size: 18px;">Rp ${pUser.sisaHutang.toLocaleString('id-ID')}</span>
+              <div class="brand">
+                <h1>SATDAPUS</h1>
+                <p>DATA PELAKU USAHA</p>
+              </div>
+              <div class="invoice-title">
+                <h2>SLIP GMV</h2>
+                <p>#${transactionId}</p>
               </div>
             </div>
 
-            <div style="text-align: center; margin-top: 20px;">
-              <div class="stamp">LUNAS / TERVERIFIKASI</div>
+            <div class="info-grid">
+              <div class="info-section">
+                <h3>PENERIMA</h3>
+                <div class="info-content">
+                  <div>${pUser.name}</div>
+                  <span>ROLE: ${pUser.role.toUpperCase()}</span>
+                </div>
+              </div>
+              <div class="info-section">
+                <h3>TRANSAKSI</h3>
+                <div class="info-content">
+                  <div>${printDate}</div>
+                  <span>WIL: ${realUser.kodeWilayah || 'PUSAT'}</span>
+                </div>
+              </div>
+            </div>
+
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width: 70%;">DESKRIPSI</th>
+                  <th style="text-align: right;">JUMLAH</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    Akumulasi GMV
+                    <div class="desc">Input data tervalidasi.</div>
+                  </td>
+                  <td style="text-align: right;">Rp ${pUser.totalGmv.toLocaleString('id-ID')}</td>
+                </tr>
+                <tr>
+                  <td>
+                    Potongan Pembayaran
+                    <div class="desc">Telah dibayarkan sebelumnya.</div>
+                  </td>
+                  <td style="text-align: right; color: #10b981;">(Rp ${pUser.dibayar.toLocaleString('id-ID')})</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="totals">
+              <div class="total-row">
+                <span class="label">Subtotal</span>
+                <span class="amount">Rp ${pUser.totalGmv.toLocaleString('id-ID')}</span>
+              </div>
+              <div class="total-row grand">
+                <span class="label" style="color: #0f172a;">SISA</span>
+                <span class="amount" style="color: #e11d48;">Rp ${pUser.sisaHutang.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+
+            <div class="stamp-container">
+              <div class="stamp">VERIFIED BY SYSTEM</div>
             </div>
 
             <div class="footer">
-              Dicetak secara otomatis oleh sistem SATDAPUS.<br>
-              Simpan slip ini sebagai bukti pembayaran yang sah.
+              Dokumen otomatis SATDAPUS.<br>
+              Validitas data terverifikasi di server utama.
             </div>
           </div>
           <script>
-            window.onload = function() { window.print(); window.close(); }
+            window.onload = function() { 
+              window.print(); 
+              setTimeout(function() { window.close(); }, 500); 
+            }
           </script>
         </body>
       </html>
@@ -327,11 +453,13 @@ export default function GmvPaymentManagement() {
                     <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">{item.name}</h3>
                     <div className="flex items-center gap-1.5 mt-1">
                       <div className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                        item.role === 'lapangan' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
-                      )}>
-                        {item.role}
-                      </div>
+                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                      item.role === 'lapangan' ? 'bg-blue-100 text-blue-600' : 
+                      item.role === 'olahdata' ? 'bg-purple-100 text-purple-600' :
+                      'bg-orange-100 text-orange-600'
+                    )}>
+                      {item.role}
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -365,7 +493,7 @@ export default function GmvPaymentManagement() {
                 {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.ADMIN) && (
                   <button 
                     onClick={() => handlePrintSlip(item)}
-                    className="w-full py-4 bg-purple-50 border border-purple-100 rounded-2xl text-purple-600 font-black text-xs uppercase tracking-widest hover:bg-purple-100 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-transparent border-2 border-purple-200/50 rounded-2xl text-purple-600 font-black text-xs uppercase tracking-widest hover:bg-purple-50 hover:border-purple-200 transition-all flex items-center justify-center gap-2"
                   >
                     <Printer size={14} />
                     Cetak Slip Pembayaran

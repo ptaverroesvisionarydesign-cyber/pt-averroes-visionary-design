@@ -85,8 +85,30 @@ export interface DataPelakuUsaha {
   pendampingLapanganId: string;
   pendampingOlahDataId: string;
   
+  // Tracking & Metadata
   createdBy: string;
+  createdByName?: string;
+  createdRole?: UserRole;
+  processedByOldat?: string; // ID of the last OLDAT processor
+  processedByName?: string; // Name of the last OLDAT processor
+  processedAt?: string;
+  
+  // Processing Status (OLDAT)
+  status_pengolahan?: 'Belum Diambil' | 'Sudah Diambil';
+  diambil_oleh_id?: string;
+  diambil_oleh_name?: string;
+  waktu_diambil?: string;
+
   updatedAt: string;
+  processHistory?: ProcessLog[];
+}
+
+export interface ProcessLog {
+  user: string;
+  userName: string;
+  role: UserRole;
+  action: string;
+  time: string;
 }
 
 export interface GmvData {

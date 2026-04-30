@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Eye,
   Mail,
+  Trash2,
   Key,
   Copy,
   PlusCircle,
@@ -28,7 +29,12 @@ import {
   ExternalLink,
   Image as ImageIcon,
   Upload,
-  Send
+  Send,
+  UserCheck,
+  UserPlus,
+  Hand,
+  Unlock,
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -61,6 +67,20 @@ export default function DataListView() {
   const [isEditingKbli, setIsEditingKbli] = useState(false);
   const [isEditingKbliTop, setIsEditingKbliTop] = useState(false);
   const [showHalalProcess, setShowHalalProcess] = useState(false);
+  
+  // New Filters
+  const [selectedDatlap, setSelectedDatlap] = useState<string>('');
+  const [selectedOldat, setSelectedOldat] = useState<string>('');
+  const [selectedPengolahan, setSelectedPengolahan] = useState<string>('');
+
+  const formatName = (name?: string) => {
+    if (!name) return 'Belum Diproses';
+    if (name.length <= 14) return name;
+    return `${name.substring(0, 14)}...`;
+  };
+
+  const datlapUsers = dataService.getUsers().filter(u => u.role === UserRole.DATLAP);
+  const oldatUsers = dataService.getUsers().filter(u => u.role === UserRole.OLDAT);
 
   const getRomanMonth = (dateString?: string) => {
     if (!dateString) return '...';
@@ -141,13 +161,19 @@ export default function DataListView() {
   };
 
   const filteredData = dataList.filter(d => {
-    const matchesRole = user?.role === UserRole.ADMIN 
-      ? adminHalalStatuses.includes(d.statusProses!)
+    const isPrivileged = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN;
+    
+    const matchesRole = isPrivileged
+      ? (user?.role === UserRole.ADMIN ? adminHalalStatuses.includes(d.statusProses!) : true)
       : user?.role === UserRole.OLDAT 
         ? d.statusProses === selectedStatus 
         : true;
     const matchesSearch = d.namaPelakuUsaha?.toLowerCase().includes(searchQuery.toLowerCase()) || d.nik?.includes(searchQuery);
-    return matchesRole && matchesSearch;
+    const matchesDatlap = !selectedDatlap || d.createdBy === selectedDatlap;
+    const matchesOldat = !selectedOldat || d.processedByOldat === selectedOldat || d.pendampingOlahDataId === selectedOldat;
+    const matchesPengolahan = !selectedPengolahan || d.status_pengolahan === selectedPengolahan;
+    
+    return matchesRole && matchesSearch && matchesDatlap && matchesOldat && matchesPengolahan;
   });
 
   const getStatusColor = (status: string) => {
@@ -169,6 +195,14 @@ export default function DataListView() {
     
     setTimeout(() => {
       const updatedItem = { ...editingData };
+      
+      // Update metadata and tracking
+      if (user) {
+        // We use the helper to update the object
+        const updatedWithMeta = dataService.updateDataMetadata(updatedItem as DataPelakuUsaha, user, 'edit');
+        Object.assign(updatedItem, updatedWithMeta);
+      }
+
       const currentList = dataService.getDataList();
       
       const exists = currentList.find(i => i.id === updatedItem.id);
@@ -280,7 +314,40 @@ export default function DataListView() {
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) && (
+                <>
+                  <select 
+                    className="pl-4 pr-10 py-3 bg-slate-50 rounded-2xl outline-none focus:bg-white border border-transparent focus:border-primary/20 transition-all font-bold text-[10px] text-slate-600 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_1rem_center] bg-no-repeat"
+                    value={selectedDatlap}
+                    onChange={e => setSelectedDatlap(e.target.value)}
+                  >
+                    <option value="">Semua Penginput</option>
+                    {datlapUsers.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                  <select 
+                    className="pl-4 pr-10 py-3 bg-slate-50 rounded-2xl outline-none focus:bg-white border border-transparent focus:border-primary/20 transition-all font-bold text-[10px] text-slate-600 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_1rem_center] bg-no-repeat"
+                    value={selectedOldat}
+                    onChange={e => setSelectedOldat(e.target.value)}
+                  >
+                    <option value="">Semua Pengolah</option>
+                    {oldatUsers.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                  <select 
+                    className="pl-4 pr-10 py-3 bg-slate-50 rounded-2xl outline-none focus:bg-white border border-transparent focus:border-primary/20 transition-all font-bold text-[10px] text-slate-600 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_1rem_center] bg-no-repeat"
+                    value={selectedPengolahan}
+                    onChange={e => setSelectedPengolahan(e.target.value)}
+                  >
+                    <option value="">Status Pengolahan</option>
+                    <option value="Belum Diambil">Belum Diambil</option>
+                    <option value="Sudah Diambil">Sudah Diambil</option>
+                  </select>
+                </>
+              )}
               {user?.role === UserRole.ADMIN && (
                 <button 
                   onClick={() => {
@@ -313,13 +380,15 @@ export default function DataListView() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Pelaku Usaha</th>
-                    {user?.role === UserRole.ADMIN && (
+                    {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) && (
                       <>
                          <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Status Halal</th>
+                         <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Pengolah Data</th>
+                         <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Penginput Data</th>
                          <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">No HP</th>
                       </>
                     )}
-                    {user?.role !== UserRole.ADMIN && (
+                    {!(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) && (
                       <>
                         <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">
                           {user?.role === UserRole.DATLAP ? 'No WA' : 'Alamat & Kecamatan'}
@@ -337,12 +406,43 @@ export default function DataListView() {
                         <div className="font-bold text-slate-900 uppercase">{item.namaPelakuUsaha}</div>
                         <div className="text-xs font-medium text-slate-400 tracking-tight">{item.nik}</div>
                       </td>
-                      {user?.role === UserRole.ADMIN ? (
+                      {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) ? (
                         <>
                           <td className="px-6 py-4 text-center">
                             <span className={cn("px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider", getStatusColor(item.statusProses!))}>
                               {item.statusProses === 'terbit sertifikat halal' ? 'HALAL TERBIT' : item.statusProses}
                             </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2" title={item.processedByName}>
+                                <div className={cn(
+                                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter",
+                                  item.processedByOldat ? "bg-purple-100 text-purple-600" : "bg-slate-100 text-slate-400"
+                                )}>
+                                  <UserCheck size={12} />
+                                  {formatName(item.processedByName)}
+                                </div>
+                              </div>
+                              {item.status_pengolahan === 'Sudah Diambil' && (
+                                <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest pl-1 shrink-0">
+                                  Diambil oleh: {item.diambil_oleh_name?.split(' ')[0]}
+                                </div>
+                              )}
+                              {item.status_pengolahan === 'Belum Diambil' && (
+                                <div className="text-[8px] font-black text-rose-400 uppercase tracking-widest pl-1 shrink-0 bg-rose-50 rounded px-1 w-fit">
+                                  Belum Diambil
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2" title={item.createdByName}>
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-600 text-[10px] font-black uppercase tracking-tighter">
+                                <UserPlus size={12} />
+                                {formatName(item.createdByName)}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-6 py-4 text-right font-bold text-slate-700">
                             {item.noHp}
@@ -368,8 +468,54 @@ export default function DataListView() {
                       )}
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                           <button 
+                          {user?.role === UserRole.OLDAT && (
+                             <button 
+                              disabled={item.status_pengolahan === 'Sudah Diambil'}
+                              className={cn(
+                                "p-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 group/ambil",
+                                item.status_pengolahan === 'Sudah Diambil' 
+                                  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" 
+                                  : "bg-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white shadow-emerald-500/5 font-black uppercase text-[10px] tracking-widest px-4"
+                              )}
+                              title={item.status_pengolahan === 'Sudah Diambil' ? `Diambil oleh ${item.diambil_oleh_name}` : "Ambil Data"}
+                              onClick={() => {
+                                if(confirm('Ambil data ini untuk diproses?')) {
+                                  dataService.takeData(item.id!, user);
+                                  const newList = dataService.getDataList();
+                                  setDataList(newList);
+                                  broadcast.postMessage({ type: 'UPDATE_DATA', id: item.id });
+
+                                  addNotification({
+                                    title: 'Data Diambil',
+                                    message: `Data Pelaku Usaha ${item.namaPelakuUsaha} telah diambil oleh ${user?.name} untuk diproses.`,
+                                    timestamp: new Date().toISOString(),
+                                    read: false,
+                                    type: 'SYSTEM',
+                                    userId: user?.id || 'system',
+                                    actorName: user?.name || 'OLDAT',
+                                    targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OLDAT]
+                                  });
+                                }
+                              }}
+                            >
+                              <Hand size={16} className={cn(item.status_pengolahan !== 'Sudah Diambil' && "group-hover/ambil:rotate-12 transition-transform")} />
+                              <span>{item.status_pengolahan === 'Sudah Diambil' ? 'Diambil' : 'Ambil'}</span>
+                            </button>
+                          )}
+
+                          <button 
+                            className={cn(
+                              "p-2.5 rounded-xl transition-all shadow-lg",
+                              (user?.role === UserRole.OLDAT && item.status_pengolahan === 'Sudah Diambil' && item.diambil_oleh_id !== user.id)
+                                ? "bg-slate-50 text-slate-300 cursor-not-allowed shadow-none"
+                                : "bg-primary/10 text-primary hover:bg-primary hover:text-white shadow-primary/5"
+                            )}
+                            title={(user?.role === UserRole.OLDAT && item.status_pengolahan === 'Sudah Diambil' && item.diambil_oleh_id !== user.id) ? `Terkunci (Sedang diproses oleh ${item.diambil_oleh_name})` : "Edit Data"}
                             onClick={() => {
+                              if (user?.role === UserRole.OLDAT && item.status_pengolahan === 'Sudah Diambil' && item.diambil_oleh_id !== user.id) {
+                                alert(`Data ini sedang diproses oleh ${item.diambil_oleh_name}. Anda hanya memiliki akses baca.`);
+                                return;
+                              }
                               if (user?.role === UserRole.DATLAP) {
                                 navigate('/input', { state: { editItem: item } });
                               } else {
@@ -377,23 +523,38 @@ export default function DataListView() {
                                 setViewStep(3);
                               }
                             }}
-                            className="p-2.5 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/5"
                           >
-                            <Edit3 size={18} />
+                            {(user?.role === UserRole.OLDAT && item.status_pengolahan === 'Sudah Diambil' && item.diambil_oleh_id !== user.id) ? (
+                              <Lock size={18} />
+                            ) : (
+                              <Edit3 size={18} />
+                            )}
                           </button>
-                          {user?.role === UserRole.ADMIN && (
+                          {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) && (
                             <button 
-                              className="p-2.5 rounded-xl bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white transition-all"
+                              className="p-2.5 rounded-xl bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white transition-all shadow-lg shadow-rose-500/5 group/delete"
+                              title="Hapus / Verifikasi sebagai Pelaku Usaha"
                               onClick={() => {
-                                if(confirm('Hapus data ini?')) {
-                                  const newList = dataService.getDataList().filter(d => d.id !== item.id);
-                                  dataService.setDataList(newList);
+                                if(confirm('Apakah Anda yakin ingin menghapus data ini? Tindakan ini akan menyaring data pelaku usaha.')) {
+                                  dataService.deleteData(item.id!);
+                                  const newList = dataService.getDataList();
                                   setDataList(newList);
                                   broadcast.postMessage({ type: 'DELETE_DATA', id: item.id });
+                                  
+                                  addNotification({
+                                    title: 'Data Dihapus',
+                                    message: `Data Pelaku Usaha ${item.namaPelakuUsaha} telah dihapus/disaring oleh ${user?.name}.`,
+                                    timestamp: new Date().toISOString(),
+                                    read: false,
+                                    type: 'SYSTEM',
+                                    userId: user?.id || 'system',
+                                    actorName: user?.name || 'Admin',
+                                    targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN]
+                                  });
                                 }
                               }}
                             >
-                              <X size={18} />
+                              <Trash2 size={18} className="group-hover/delete:scale-110 transition-transform" />
                             </button>
                           )}
                         </div>
