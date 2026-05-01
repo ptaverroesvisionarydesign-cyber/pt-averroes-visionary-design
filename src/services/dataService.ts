@@ -6,12 +6,23 @@
 import { GoogleGenAI } from "@google/genai";
 import { DataPelakuUsaha, StatusProses, UserRole, User, Kbli, Wilayah, ProcessLog } from "../types";
 import { format } from "date-fns";
+import { db } from "../firebase";
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where,
+  getDoc,
+  setDoc,
+  onSnapshot
+} from "firebase/firestore";
 
-console.log("ENV:", import.meta.env);
-console.log("API KEY:", import.meta.env.VITE_API_KEY);
-const ai = new GoogleGenAI({
-  apiKey: import.meta.env.VITE_API_KEY
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 // Centralized Store (Simulated for this demo)
 let gmvSettingsStore = {
   superAdmin: 142500,
@@ -40,12 +51,74 @@ let wilayahsStore: Wilayah[] = [
 ];
 
 let usersStore: User[] = [
-  { id: '1', email: 'superadmin@halal.id', name: 'Super Admin', noHp: '081111111111', role: UserRole.SUPER_ADMIN, status: 'Aktif', joinDate: '2025-01-01', lastLogin: '2026-04-28 10:00' },
-  { id: '2', email: 'admin.utama@halal.id', name: 'Admin Utama', noHp: '081222222222', role: UserRole.ADMIN, status: 'Aktif', joinDate: '2025-02-15', lastLogin: '2026-04-29 08:30' },
-  { id: '3', email: 'badudatlap@halal.id', name: 'Badu Datlap', noHp: '081333333333', role: UserRole.DATLAP, kodeWilayah: 'LEUWISARI', status: 'Aktif', joinDate: '2025-03-20', lastLogin: '2026-04-28 16:45' },
-  { id: '4', email: 'sitioldat@halal.id', name: 'Siti Oldat', noHp: '081444444444', role: UserRole.OLDAT, kodeWilayah: 'SINGAPARNA', status: 'Aktif', joinDate: '2025-04-10', lastLogin: '2026-04-29 09:15' },
-  { id: '5', email: 'budidatlap@halal.id', name: 'Budi Datlap', noHp: '081555555555', role: UserRole.DATLAP, kodeWilayah: 'MANONJAYA', status: 'Aktif', joinDate: '2025-05-05', lastLogin: '2026-04-30 07:00' },
+  { id: '1', email: 'superadmin@halal.id', name: 'Super Admin', noHp: '081111111111', password: 'avd2711', role: UserRole.SUPER_ADMIN, status: 'Aktif', joinDate: '2025-01-01', lastLogin: '2026-04-28 10:00' },
+  { id: '2', email: 'admin.utama@halal.id', name: 'Admin Utama', noHp: '081222222222', password: 'admin', role: UserRole.ADMIN, status: 'Aktif', joinDate: '2025-02-15', lastLogin: '2026-04-29 08:30' },
+  { id: '3', email: 'badudatlap@halal.id', name: 'Badu Datlap', noHp: '081333333333', password: 'useruserdatlap001', role: UserRole.DATLAP, kodeWilayah: 'LEUWISARI', status: 'Aktif', joinDate: '2025-03-20', lastLogin: '2026-04-28 16:45' },
+  { id: '4', email: 'sitioldat@halal.id', name: 'Siti Oldat', noHp: '081444444444', password: 'useruseroldat001', role: UserRole.OLDAT, kodeWilayah: 'SINGAPARNA', status: 'Aktif', joinDate: '2025-04-10', lastLogin: '2026-04-29 09:15' },
+  { id: '5', email: 'budidatlap@halal.id', name: 'Budi Datlap', noHp: '081555555555', password: 'useruserdatlap001', role: UserRole.DATLAP, kodeWilayah: 'MANONJAYA', status: 'Aktif', joinDate: '2025-05-05', lastLogin: '2026-04-30 07:00' },
 ];
+
+// Initialize real-time sync for users if possible, or just load them
+const initUsers = async () => {
+  try {
+    const q = query(collection(db, "users"));
+    const querySnapshot = await getDocs(q);
+    const dbUsers: User[] = [];
+    querySnapshot.forEach((doc) => {
+      dbUsers.push({ id: doc.id, ...doc.data() } as User);
+    });
+    
+    // Always ensure Super Admin specifically exists with the right credentials in DB
+    const saEmail = 'superadmin@halal.id'.toLowerCase();
+    const saInDb = dbUsers.find(u => u.email.toLowerCase() === saEmail);
+    
+    if (!saInDb) {
+      // Add Super Admin if missing
+      const saDefault = {
+        email: saEmail,
+        name: 'Super Admin',
+        password: 'avd2711',
+        role: UserRole.SUPER_ADMIN,
+        status: 'Aktif',
+        joinDate: '2025-01-01',
+        lastLogin: '-',
+        noHp: '081234567890',
+        kodeWilayah: 'Pusat'
+      };
+      await setDoc(doc(db, "users", "1"), saDefault);
+      dbUsers.push({ id: "1", ...saDefault } as User);
+    } else if (saInDb.password !== 'avd2711') {
+      // Update password if it doesn't match the new requirement
+      await updateDoc(doc(db, "users", saInDb.id), { password: 'avd2711' });
+      const found = dbUsers.find(u => u.id === saInDb.id);
+      if (found) found.password = 'avd2711';
+    }
+
+    // Seed other default users if collection only contains our newly added/fixed Super Admin
+    if (dbUsers.length <= 1) {
+      const defaultData = [
+        { name: 'Admin Operasional', email: 'admin@halal.id', password: 'admin', role: UserRole.ADMIN, status: 'Aktif', noHp: '081122334455', kodeWilayah: 'Provinsi', joinDate: '2025-01-10', lastLogin: '-' },
+        { name: 'Ahmad Datlap', email: 'datlap@halal.id', password: 'datlap', role: UserRole.DATLAP, status: 'Aktif', noHp: '082233445566', kodeWilayah: 'Kabupaten A', joinDate: '2025-02-15', lastLogin: '-' },
+        { name: 'Siti Oldat', email: 'oldat@halal.id', password: 'oldat', role: UserRole.OLDAT, status: 'Aktif', noHp: '083344556677', kodeWilayah: 'Pusat', joinDate: '2025-03-20', lastLogin: '-' }
+      ];
+
+      for (const u of defaultData) {
+        if (!dbUsers.find(du => du.email.toLowerCase() === u.email.toLowerCase())) {
+          const docRef = await addDoc(collection(db, "users"), u);
+          dbUsers.push({ id: docRef.id, ...u } as User);
+        }
+      }
+    }
+    
+    usersStore = dbUsers;
+    console.log("Users Store initialized from Firestore");
+  } catch (err) {
+    console.error("Error initializing users from Firestore:", err);
+  }
+};
+
+// Start initialization
+initUsers();
 
 // Initial Data List
 let dataListStore: Partial<DataPelakuUsaha>[] = [
@@ -191,21 +264,67 @@ export const dataService = {
 
   // User Management
   getUsers: () => usersStore,
-  addUser: (user: Omit<User, 'id' | 'joinDate' | 'lastLogin'>) => {
-    const newUser = { 
-      ...user, 
-      id: Math.random().toString(36).substr(2, 9),
-      joinDate: new Date().toISOString().split('T')[0],
-      lastLogin: '-'
-    };
-    usersStore = [...usersStore, newUser];
-    return newUser;
+  getUserByEmail: async (email: string) => {
+    try {
+      const q = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const d = querySnapshot.docs[0];
+        return { id: d.id, ...d.data() } as User;
+      }
+      return null;
+    } catch (err) {
+      console.error("Error getting user by email:", err);
+      return null;
+    }
   },
-  updateUser: (id: string, user: Partial<User>) => {
-    usersStore = usersStore.map(u => u.id === id ? { ...u, ...user } : u);
+  addUser: async (user: Omit<User, 'id' | 'joinDate' | 'lastLogin'>) => {
+    try {
+      const userData = { 
+        ...user, 
+        email: user.email.toLowerCase(),
+        joinDate: new Date().toISOString().split('T')[0],
+        lastLogin: '-'
+      };
+      const docRef = await addDoc(collection(db, "users"), userData);
+      const newUser = { id: docRef.id, ...userData } as User;
+      usersStore = [...usersStore, newUser];
+      return newUser;
+    } catch (err) {
+      console.error("Error adding user:", err);
+      throw err;
+    }
   },
-  deleteUser: (id: string) => {
-    usersStore = usersStore.filter(u => u.id !== id);
+  updateUser: async (id: string, user: Partial<User>) => {
+    try {
+      const { id: _, ...userData } = user;
+      // Filter out empty password if provided and lowercase email
+      const finalUpdate: any = { ...userData };
+      if (finalUpdate.email) {
+        finalUpdate.email = finalUpdate.email.toLowerCase();
+      }
+      if (finalUpdate.password === "") {
+        delete finalUpdate.password;
+      }
+      
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, finalUpdate);
+      
+      usersStore = usersStore.map(u => u.id === id ? { ...u, ...finalUpdate } : u);
+    } catch (err) {
+      console.error("Error updating user:", err);
+      throw err;
+    }
+  },
+  deleteUser: async (id: string) => {
+    try {
+      const userRef = doc(db, "users", id);
+      await deleteDoc(userRef);
+      usersStore = usersStore.filter(u => u.id !== id);
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      throw err;
+    }
   },
 
   // Data List Management
