@@ -35,18 +35,21 @@ export default function LoginPage() {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md overflow-hidden bg-white border border-slate-200 rounded-[2.5rem] shadow-geometric"
       >
-        <div className="bg-primary p-10 text-center text-white relative overflow-hidden">
-          <div className="absolute -left-4 -top-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center">
+        <div className="mx-auto mb-4 flex items-center justify-center">
   <img 
-    src="/logo-bpjph.png" 
-    alt="BPJPH Logo" 
-    className="max-h-full max-w-full object-contain drop-shadow-lg" 
+    src="/satdapus.png" 
+    alt="Logo SATDAPUS" 
+    className="h-20 object-contain drop-shadow-lg"
   />
 </div>
-          <h1 className="text-3xl font-black tracking-tight uppercase">SATDAPUS</h1>
-          <p className="mt-1 text-xs font-bold text-purple-100 opacity-80 uppercase tracking-widest">Pusat Data Pelaku Usaha</p>
-        </div>
+          <div className="text-center mt-6 mb-4">
+  <h1 className="text-xl font-bold text-gray-800">
+    SATDAPUS
+  </h1>
+  <p className="text-sm text-gray-500">
+    PUSAT DATA PELAKU USAHA
+  </p>
+</div>
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8">
           <div className="space-y-6">
