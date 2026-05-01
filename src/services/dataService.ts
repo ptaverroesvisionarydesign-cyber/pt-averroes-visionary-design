@@ -6,7 +6,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { DataPelakuUsaha, StatusProses, UserRole, User, Kbli, Wilayah, ProcessLog } from "../types";
 import { format } from "date-fns";
-import { db } from "../firebase";
+import { db } from "AIzaSyBpzGdKl85x-ZT-AR5Cd_2mOCowWIc8aeI/firebase";
 import { 
   collection, 
   getDocs, 
