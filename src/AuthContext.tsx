@@ -5,6 +5,7 @@
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import { User, UserRole } from './types';
+import { dataService } from './services/dataService';
 
 interface AuthContextType {
   user: User | null;
@@ -29,36 +30,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Hardcoded demo authentication as requested
-    if (email === 'admin@halal.id' && password === 'admin') {
-      const u: User = { id: 'admin', email, name: 'Super Admin', role: UserRole.SUPER_ADMIN, status: 'Aktif', joinDate: '2025-01-01', lastLogin: '-' };
-      setUser(u);
-      localStorage.setItem('satdapus_user', JSON.stringify(u));
-      return;
+    const trimmedEmail = email.trim();
+    console.log("LOGIN INPUT:", trimmedEmail);
+    
+    // Check in dataService
+    const foundUser = await dataService.getUserByEmail(trimmedEmail);
+    console.log("USER FOUND:", foundUser);
+
+    if (!foundUser) {
+      throw new Error('Email tidak terdaftar');
     }
 
-    if (email === 'admin.biasa@halal.id' && password === 'admin') {
-      const u: User = { id: 'admin2', email, name: 'Admin Operasional', role: UserRole.ADMIN, status: 'Aktif', joinDate: '2025-01-05', lastLogin: '-' };
-      setUser(u);
-      localStorage.setItem('satdapus_user', JSON.stringify(u));
-      return;
+    // Since we don't have hashing yet, direct comparison
+    if (foundUser.password !== password) {
+      throw new Error('Password salah');
     }
 
-    if (email === 'userdatlap1@halal.id' && password === 'useruserdatlap001') {
-      const u: User = { id: 'dl1', email, name: 'Data Lapangan 1', role: UserRole.DATLAP, kodeWilayah: 'LEUWISARI', status: 'Aktif', joinDate: '2025-01-10', lastLogin: '-' };
-      setUser(u);
-      localStorage.setItem('satdapus_user', JSON.stringify(u));
-      return;
-    }
-
-    if (email === 'userOldat1@halal.id' && password === 'useruseroldat001') {
-      const u: User = { id: 'od1', email, name: 'Olah Data 1', role: UserRole.OLDAT, status: 'Aktif', joinDate: '2025-02-15', lastLogin: '-' };
-      setUser(u);
-      localStorage.setItem('satdapus_user', JSON.stringify(u));
-      return;
-    }
-
-    throw new Error('Email atau password salah');
+    // Role check and login successful
+    const { password: _, ...userWithoutPassword } = foundUser;
+    const u = userWithoutPassword as User;
+    
+    setUser(u);
+    localStorage.setItem('satdapus_user', JSON.stringify(u));
   };
 
   const logout = () => {
