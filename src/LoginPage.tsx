@@ -38,7 +38,7 @@ export default function LoginPage() {
         <div className="bg-gradient-to-br from-primary via-purple-700 to-primary w-full h-[200px] sm:h-[240px] relative overflow-hidden">
           <div className="absolute -left-4 -top-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <img 
-            src="satdapus.png" 
+            src="input_file_0.png" 
             alt="SATDAPUS Logo" 
             className="w-full h-full object-cover" 
             referrerPolicy="no-referrer" 
