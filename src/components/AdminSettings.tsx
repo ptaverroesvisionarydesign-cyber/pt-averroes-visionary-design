@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
@@ -59,6 +59,17 @@ export default function AdminSettings() {
 
   // States
   const [users, setUsers] = useState<User[]>(dataService.getUsers());
+  
+  useEffect(() => {
+    // Refresh users after initUsers might have finished
+    const refreshUsers = async () => {
+      // Small delay to let initUsers finish or just fetch again
+      setTimeout(() => {
+        setUsers(dataService.getUsers());
+      }, 1000);
+    };
+    refreshUsers();
+  }, []);
   const [kblis, setKblis] = useState<Kbli[]>(dataService.getKblis());
   const [wilayahs, setWilayahs] = useState<Wilayah[]>(dataService.getWilayahs());
 
@@ -152,11 +163,11 @@ export default function AdminSettings() {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    const processSubmit = async () => {
       if (modalType === 'users' || modalType === 'user') {
         const { resetPassword, forceLogout, showPassword, ...userData } = userForm;
         if (editingItem) {
-          dataService.updateUser(editingItem.id, userData);
+          await dataService.updateUser(editingItem.id, userData);
           setUsers(dataService.getUsers());
           setNotificationMsg('Akun berhasil diperbarui');
           
@@ -170,7 +181,7 @@ export default function AdminSettings() {
             link: '/admin-settings'
           });
         } else {
-          dataService.addUser(userData);
+          await dataService.addUser(userData);
           setUsers(dataService.getUsers());
           setNotificationMsg('Akun baru berhasil dibuat');
 
@@ -203,13 +214,15 @@ export default function AdminSettings() {
       }
       setLoading(false);
       setIsModalOpen(false);
-    }, 800);
+    };
+
+    processSubmit();
   };
 
-  const handleDelete = (type: Tab, id: string) => {
+  const handleDelete = async (type: Tab, id: string) => {
     if (window.confirm('Yakin ingin menghapus data ini?')) {
       if (type === 'users') {
-        dataService.deleteUser(id);
+        await dataService.deleteUser(id);
         setUsers(dataService.getUsers());
       } else if (type === 'kbli') {
         dataService.deleteKbli(id);
