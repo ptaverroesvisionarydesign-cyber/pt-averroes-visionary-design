@@ -59,11 +59,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-64 lg:w-72 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen shrink-0">
         <div className="p-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-purple-900">SATDAPUS</span>
+          <div className="flex items-center justify-center">
+            <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
           </div>
         </div>
 
@@ -110,11 +107,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Header - Mobile */}
       <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-          </div>
-          <span className="text-lg font-black tracking-tighter text-slate-900">SATDAPUS</span>
+        <div className="h-8 flex items-center">
+          <img src="input_file_0.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -146,11 +140,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <div className="p-8 border-b border-slate-50">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 flex items-center justify-center">
-                      <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                    </div>
-                    <span className="text-xl font-bold tracking-tight text-purple-900">SATDAPUS</span>
+                  <div className="h-10 flex items-center">
+                    <img src="input_file_0.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
                   </div>
                   <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400">
                     <X size={20} />
@@ -218,14 +209,11 @@ function MainRoutes() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white text-primary">
         <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 1.5 }}
-          className="flex flex-col items-center"
+          animate={{ scale: [1, 1.05, 1], opacity: [0.8, 1, 0.8] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+          className="flex flex-col items-center max-w-xs px-8"
         >
-          <div className="w-20 h-20 mb-4">
-            <img src="input_file_0.png" alt="BPJPH Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-          </div>
-          <span className="font-black text-xl tracking-widest">SATDAPUS</span>
+          <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
         </motion.div>
       </div>
     );

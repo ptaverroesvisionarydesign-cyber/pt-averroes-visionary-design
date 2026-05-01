@@ -33,23 +33,17 @@ export default function LoginPage() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md overflow-hidden bg-white border border-slate-200 rounded-[2.5rem] shadow-geometric"
+        className="w-full max-w-md overflow-hidden bg-white border border-slate-100 rounded-[2.5rem] shadow-2xl shadow-primary/10"
       >
-        <div className="mx-auto mb-4 flex items-center justify-center">
-  <img 
-    src="/satdapus.png" 
-    alt="Logo SATDAPUS" 
-    className="h-20 object-contain drop-shadow-lg"
-  />
-</div>
-          <div className="text-center mt-6 mb-4">
-  <h1 className="text-xl font-bold text-gray-800">
-    SATDAPUS
-  </h1>
-  <p className="text-sm text-gray-500">
-    PUSAT DATA PELAKU USAHA
-  </p>
-</div>
+        <div className="bg-gradient-to-br from-primary via-purple-700 to-primary w-full h-[200px] sm:h-[240px] relative overflow-hidden">
+          <div className="absolute -left-4 -top-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <img 
+            src="input_file_0.png" 
+            alt="SATDAPUS Logo" 
+            className="w-full h-full object-cover" 
+            referrerPolicy="no-referrer" 
+          />
+        </div>
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8">
           <div className="space-y-6">

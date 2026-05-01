@@ -1,6 +1,6 @@
 {
   "name": "SATDAPUS",
-  "description": "Satu Data Pelaku Usaha - Platform manajemen data pelaku usaha dengan fitur multi-role, dashboard realtime, dan integrasi AI.",
+  "description": "Pusat Data Pelaku Usaha - Platform manajemen data pelaku usaha dengan fitur multi-role, dashboard realtime, dan integrasi AI.",
   "requestFramePermissions": [
     "camera",
     "microphone"
