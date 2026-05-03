@@ -168,7 +168,9 @@ export default function AdminSettings() {
         const { resetPassword, forceLogout, showPassword, ...userData } = userForm;
         if (editingItem) {
           await dataService.updateUser(editingItem.id, userData);
-          setUsers(dataService.getUsers());
+setUsers(prev =>
+  prev.map(u =>
+    u.id === editingItem.id ? { ...u, ...userData } : u
           setNotificationMsg('Akun berhasil diperbarui');
           
           addNotification({
@@ -181,8 +183,8 @@ export default function AdminSettings() {
             link: '/admin-settings'
           });
         } else {
-          await dataService.addUser(userData);
-          setUsers(dataService.getUsers());
+          const newUser = await dataService.addUser(userData);
+setUsers(prev => [...prev, newUser]);
           setNotificationMsg('Akun baru berhasil dibuat');
 
           addNotification({
