@@ -168,12 +168,7 @@ export default function AdminSettings() {
         const { resetPassword, forceLogout, showPassword, ...userData } = userForm;
         if (editingItem) {
           await dataService.updateUser(editingItem.id, userData);
-
-setUsers(prev =>
-  prev.map(u =>
-    u.id === editingItem.id ? { ...u, ...userData } : u
-  )
-);
+          setUsers(dataService.getUsers());
           setNotificationMsg('Akun berhasil diperbarui');
           
           addNotification({
@@ -186,8 +181,8 @@ setUsers(prev =>
             link: '/admin-settings'
           });
         } else {
-          const newUser = await dataService.addUser(userData);
-setUsers(prev => [...prev, newUser]);
+          await dataService.addUser(userData);
+          setUsers(dataService.getUsers());
           setNotificationMsg('Akun baru berhasil dibuat');
 
           addNotification({
@@ -761,7 +756,7 @@ setUsers(prev => [...prev, newUser]);
                     {loading ? <Loader2 className="animate-spin" /> : <>Simpan Perubahan <CheckCircle2 size={18} /></>}
                   </button>
                   
-                  {editingItem && modalType === 'users' && (
+                  {editingItem && modalType === 'user' && (
                     <button 
                       type="button"
                       onClick={() => {
