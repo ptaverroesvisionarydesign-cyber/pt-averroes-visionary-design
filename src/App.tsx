@@ -228,7 +228,7 @@ function MainRoutes() {
           transition={{ repeat: Infinity, duration: 2 }}
           className="flex flex-col items-center max-w-xs px-8"
         >
-          <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="satdapus.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
         </motion.div>
       </div>
     );
