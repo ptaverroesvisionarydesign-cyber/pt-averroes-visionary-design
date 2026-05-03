@@ -108,7 +108,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Header - Mobile */}
       <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between sticky top-0 z-40">
         <div className="h-8 flex items-center">
-          <img src="input_file_0.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="satdapus.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
         </div>
         <div className="flex items-center gap-2">
           <button 
