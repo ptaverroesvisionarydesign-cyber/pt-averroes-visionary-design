@@ -168,9 +168,12 @@ export default function AdminSettings() {
         const { resetPassword, forceLogout, showPassword, ...userData } = userForm;
         if (editingItem) {
           await dataService.updateUser(editingItem.id, userData);
+
 setUsers(prev =>
   prev.map(u =>
     u.id === editingItem.id ? { ...u, ...userData } : u
+  )
+);
           setNotificationMsg('Akun berhasil diperbarui');
           
           addNotification({
@@ -758,7 +761,7 @@ setUsers(prev => [...prev, newUser]);
                     {loading ? <Loader2 className="animate-spin" /> : <>Simpan Perubahan <CheckCircle2 size={18} /></>}
                   </button>
                   
-                  {editingItem && modalType === 'user' && (
+                  {editingItem && modalType === 'users' && (
                     <button 
                       type="button"
                       onClick={() => {
