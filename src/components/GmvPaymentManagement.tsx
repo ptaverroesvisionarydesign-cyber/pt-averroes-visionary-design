@@ -327,7 +327,7 @@ export default function GmvPaymentManagement() {
           <div class="page">
             <div class="header">
               <div class="brand">
-                <img src="input_file_0.png" alt="SATDAPUS Logo" style="height: 32px; width: auto; object-fit: contain; margin-bottom: 2px;" />
+                <img src="satdapus.png" alt="SATDAPUS Logo" style="height: 32px; width: auto; object-fit: contain; margin-bottom: 2px;" />
               </div>
               <div class="invoice-title">
                 <h2>SLIP GMV</h2>
