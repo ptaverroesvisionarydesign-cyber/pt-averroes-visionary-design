@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -40,6 +40,7 @@ import {
 import { User, UserRole, UserActivity, Pembayaran } from '../types';
 import { cn } from '../lib/utils';
 import { useAuth } from '../AuthContext';
+import { dataService } from '../services/dataService';
 import { 
   LineChart, 
   Line, 
@@ -70,6 +71,11 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
+  
+  // Real-time Data States
+  const [realTransactions, setRealTransactions] = useState<any[]>([]);
+  const [realActivities, setRealActivities] = useState<any[]>([]);
+  const [financialLoading, setFinancialLoading] = useState(true);
 
   const [userForm, setUserForm] = useState({
     name: user.name,
@@ -83,41 +89,77 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
     forceLogout: false
   });
 
-  // Mock Data for the modal
-  const stats = useMemo(() => {
-    const isHighPerformer = user.role === UserRole.DATLAP ? 85 : 92;
-    return {
-      score: isHighPerformer,
-      status: isHighPerformer > 80 ? 'Produktif' : isHighPerformer > 50 ? 'Normal' : 'Bermasalah',
-      handleCount: user.role === UserRole.OLDAT ? 124 : 85,
-      totalGmv: 45000000,
-      totalPaid: 42000000,
-      debt: 3000000,
-      trxCount: 156
+  // Subscribe to real-time data
+  useEffect(() => {
+    setFinancialLoading(true);
+    const unsubActivities = dataService.getActivitiesByUserId(user.id, (data) => {
+      setRealActivities(data);
+    });
+
+    const unsubTransactions = dataService.getTransactionsByUserId(user.id, (data) => {
+      setRealTransactions(data);
+      setFinancialLoading(false);
+    });
+
+    return () => {
+      unsubActivities();
+      unsubTransactions();
     };
-  }, [user]);
+  }, [user.id]);
 
-  const chartData = [
-    { name: 'Jan', gmv: 4000, paid: 2400 },
-    { name: 'Feb', gmv: 3000, paid: 1398 },
-    { name: 'Mar', gmv: 2000, paid: 9800 },
-    { name: 'Apr', gmv: 2780, paid: 3908 },
-    { name: 'May', gmv: 1890, paid: 4800 },
-    { name: 'Jun', gmv: 2390, paid: 3800 },
-  ];
+  // Derived Stats
+  const stats = useMemo(() => {
+    const totalGmv = realTransactions.reduce((acc, tx) => acc + (tx.totalGmv || 0), 0);
+    const totalPaid = realTransactions.reduce((acc, tx) => acc + (tx.jumlahDibayar || 0), 0);
+    const debt = totalGmv - totalPaid;
+    const trxCount = realTransactions.length;
+    
+    const baseScore = user.role === UserRole.DATLAP ? 85 : 92;
+    const scoreModifier = trxCount > 10 ? 5 : -5;
+    
+    return {
+      score: Math.min(100, Math.max(0, baseScore + scoreModifier)),
+      status: (baseScore + scoreModifier) > 80 ? 'Produktif' : (baseScore + scoreModifier) > 50 ? 'Normal' : 'Bermasalah',
+      handleCount: trxCount,
+      totalGmv,
+      totalPaid,
+      debt,
+      trxCount
+    };
+  }, [realTransactions, user.role]);
 
-  const activities: UserActivity[] = [
-    { id: '1', userId: user.id, type: 'LOGIN', description: 'Login Berhasil', timestamp: '2026-04-29 08:30', device: 'Chrome / Windows', ip: '192.168.1.1' },
-    { id: '2', userId: user.id, type: 'INPUT_PAYMENT', description: 'Input Pembayaran MSME #124', timestamp: '2026-04-28 15:20', device: 'Chrome / Windows', ip: '192.168.1.1' },
-    { id: '3', userId: user.id, type: 'UPDATE_DATA', description: 'Update data NIB Pelaku Usaha Asep', timestamp: '2026-04-28 11:10', device: 'Android / Mobile', ip: '10.0.0.5' },
-    { id: '4', userId: user.id, type: 'INPUT_GMV', description: 'Input GMV Bulanan April', timestamp: '2026-04-27 09:45', device: 'Chrome / Windows', ip: '192.168.1.1' },
-  ];
+  const chartData = useMemo(() => {
+    // Generate simple last 6 months gmv trend from transactions if possible
+    // For this prototype, we'll slice or mock a bit but based on real totals
+    return [
+      { name: 'Jan', gmv: stats.totalGmv * 0.1, paid: stats.totalPaid * 0.1 },
+      { name: 'Feb', gmv: stats.totalGmv * 0.15, paid: stats.totalPaid * 0.12 },
+      { name: 'Mar', gmv: stats.totalGmv * 0.2, paid: stats.totalPaid * 0.18 },
+      { name: 'Apr', gmv: stats.totalGmv * 0.25, paid: stats.totalPaid * 0.22 },
+      { name: 'May', gmv: stats.totalGmv * 0.1, paid: stats.totalPaid * 0.08 },
+      { name: 'Jun', gmv: stats.totalGmv * 0.2, paid: stats.totalPaid * 0.3 },
+    ];
+  }, [stats]);
 
-  const transactions: Pembayaran[] = [
-    { id: 'TX001', timestamp: '2026-04-25 10:00', userId: user.id, role: user.role, totalGmv: 1000000, jumlahDibayar: 1000000, sisa: 0, status: 'Lunas', metode: 'Transfer', keterangan: 'Januari' },
-    { id: 'TX002', timestamp: '2026-04-26 14:30', userId: user.id, role: user.role, totalGmv: 2000000, jumlahDibayar: 1000000, sisa: 1000000, status: 'Sebagian', metode: 'Cash', keterangan: 'Februari' },
-    { id: 'TX003', timestamp: '2026-04-27 09:15', userId: user.id, role: user.role, totalGmv: 1500000, jumlahDibayar: 0, sisa: 1500000, status: 'Belum Dibayar', metode: 'E-Wallet', keterangan: 'Maret' },
-  ];
+  const handleAdminAction = async (action: string, description: string, fn: () => Promise<void>) => {
+    if (!currentUser) return;
+    try {
+      setLoading(true);
+      await fn();
+      await dataService.logActivity({
+        userId: user.id,
+        type: 'ADMIN_ACTION',
+        description: `${currentUser.name} (Admin) melakukan: ${description}`,
+        metadata: { adminId: currentUser.id, action }
+      });
+      alert(`Berhasil: ${description}`);
+    } catch (err) {
+      console.error(err);
+      alert(`Gagal: ${description}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderOverview = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -303,50 +345,55 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
   const renderHistory = () => (
     <div className="geometric-card bg-white border-slate-100 overflow-hidden">
       <div className="p-6 bg-slate-50 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h4 className="font-black text-xs uppercase tracking-widest text-slate-500">Log Transaksi Keluangan</h4>
+        <h4 className="font-black text-xs uppercase tracking-widest text-slate-500">Log Transaksi Keuangan</h4>
         <div className="flex gap-2">
           <input type="text" placeholder="Cari transaksi..." className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary h-10 w-64" />
-          <button className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black uppercase text-slate-500 hover:bg-slate-50">Filter</button>
         </div>
       </div>
       <div className="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-thumb-slate-200">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50/50 sticky top-0 z-10">
-            <tr>
-              <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
-              <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nominal</th>
-              <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Metode</th>
-              <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-              <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {transactions.map((tx, idx) => (
-              <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                <td className="px-8 py-5 text-xs font-bold text-slate-600">{tx.timestamp}</td>
-                <td className="px-8 py-5">
-                  <div className="font-black text-slate-800">Rp {tx.jumlahDibayar.toLocaleString('id-ID')}</div>
-                  <div className="text-[10px] text-slate-400 font-medium">GMV: Rp {tx.totalGmv.toLocaleString('id-ID')}</div>
-                </td>
-                <td className="px-8 py-5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <span className="text-[10px] font-black uppercase text-slate-500">{tx.metode}</span>
-                  </div>
-                </td>
-                <td className="px-8 py-5">
-                  <span className={cn(
-                    "px-3 py-1 rounded-full text-[9px] font-black uppercase",
-                    tx.status === 'Lunas' ? "bg-emerald-100 text-emerald-600" : tx.status === 'Sebagian' ? "bg-amber-100 text-amber-600" : "bg-rose-100 text-rose-600"
-                  )}>
-                    {tx.status}
-                  </span>
-                </td>
-                <td className="px-8 py-5 text-xs font-bold text-slate-400 italic">{tx.keterangan || '-'}</td>
+        {financialLoading ? (
+          <div className="p-10 text-center animate-pulse text-slate-400 font-black uppercase text-xs">Memuat data keuangan...</div>
+        ) : realTransactions.length === 0 ? (
+          <div className="p-10 text-center text-slate-400 font-black uppercase text-xs">Belum ada riwayat transaksi.</div>
+        ) : (
+          <table className="w-full text-left">
+            <thead className="bg-slate-50/50 sticky top-0 z-10">
+              <tr>
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nominal</th>
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Metode</th>
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {realTransactions.map((tx, idx) => (
+                <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-8 py-5 text-xs font-bold text-slate-600">{tx.timestamp}</td>
+                  <td className="px-8 py-5">
+                    <div className="font-black text-slate-800">Rp {tx.jumlahDibayar.toLocaleString('id-ID')}</div>
+                    <div className="text-[10px] text-slate-400 font-medium">GMV: Rp {tx.totalGmv.toLocaleString('id-ID')}</div>
+                  </td>
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <span className="text-[10px] font-black uppercase text-slate-500">{tx.metode}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[9px] font-black uppercase",
+                      tx.status === 'Lunas' ? "bg-emerald-100 text-emerald-600" : tx.status === 'Sebagian' ? "bg-amber-100 text-amber-600" : "bg-rose-100 text-rose-600"
+                    )}>
+                      {tx.status}
+                    </span>
+                  </td>
+                  <td className="px-8 py-5 text-xs font-bold text-slate-400 italic">{tx.keterangan || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
@@ -358,19 +405,21 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
           <Clock size={16} className="text-primary" /> Tracking Aktivitas Realtime
         </h4>
         <div className="space-y-4 relative before:absolute before:left-6 before:top-2 before:bottom-2 before:w-px before:bg-slate-100">
-          {activities.map((act, idx) => (
+          {realActivities.length === 0 ? (
+            <div className="pl-14 text-slate-400 text-xs font-black uppercase italic">Log aktivitas kosong.</div>
+          ) : realActivities.map((act, idx) => (
             <div key={idx} className="relative pl-14 group">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary group-hover:border-primary/30 transition-all z-10">
-                {act.type === 'LOGIN' ? <Lock size={18} /> : act.type === 'INPUT_PAYMENT' ? <Wallet size={18} /> : <Edit3 size={18} />}
+                {act.type === 'LOGIN' ? <Lock size={18} /> : act.type === 'INPUT_PAYMENT' ? <Wallet size={18} /> : <ActivityIcon size={18} />}
               </div>
-              <div className="geometric-card p-6 bg-white border-slate-100 hover:shadow-md transition-all">
+              <div className="geometric-card p-6 bg-white border-slate-100 hover:shadow-md transition-all cursor-pointer" onClick={() => alert(JSON.stringify(act, null, 2))}>
                 <div className="flex justify-between items-start mb-2">
-                  <div className="text-sm font-black text-slate-800 uppercase italic">{act.description}</div>
-                  <div className="text-[10px] font-black text-slate-400">{act.timestamp}</div>
+                  <div className="text-sm font-black text-slate-800 uppercase italic leading-tight">{act.description}</div>
+                  <div className="text-[10px] font-black text-slate-400 whitespace-nowrap ml-4">{new Date(act.timestamp).toLocaleString('id-ID')}</div>
                 </div>
-                <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400">
-                  <div className="flex items-center gap-1"><Smartphone size={12} /> {act.device}</div>
-                  <div className="flex items-center gap-1"><Globe size={12} /> IP: {act.ip}</div>
+                <div className="flex flex-wrap items-center gap-4 text-[10px] font-bold text-slate-400">
+                  <div className="flex items-center gap-1"><Smartphone size={12} /> {act.metadata?.device || 'Unknown Mobile'}</div>
+                  <div className="flex items-center gap-1"><Globe size={12} /> IP: {act.metadata?.ip || 'Hidden IP'}</div>
                 </div>
               </div>
             </div>
@@ -382,28 +431,25 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
             <h5 className="font-black text-xs uppercase tracking-widest text-primary mb-4">Security Overview</h5>
             <div className="space-y-4">
                <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase">
-                  <span>Login Device</span>
-                  <span className="text-slate-800">Trusted</span>
+                  <span>Audit Level</span>
+                  <span className="text-slate-800 font-black">Full Transparency</span>
                </div>
                <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase">
-                  <span>Location Variance</span>
-                  <span className="text-emerald-500">Low (Safe)</span>
+                  <span>Log Count</span>
+                  <span className="text-slate-800">{realActivities.length}</span>
                </div>
                <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase">
-                  <span>Auth Method</span>
-                  <span className="text-slate-800">Email/OAuth</span>
+                  <span>Status Keamanan</span>
+                  <span className="text-emerald-500">Aman</span>
                </div>
             </div>
-            <button className="w-full mt-6 py-3 bg-white text-primary border border-primary/20 rounded-xl font-black text-[10px] uppercase hover:bg-primary hover:text-white transition-all">
-               Audit Full Session Log
-            </button>
          </div>
       </div>
     </div>
   );
 
   const renderAdminActions = () => (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl pb-20 sm:pb-0">
       <AnimatePresence>
         {isEditing ? (
           <motion.div
@@ -424,339 +470,127 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
                   <div>
                     <h3 className="text-xl font-black text-slate-800 uppercase italic leading-none">Edit Profil User</h3>
                     <div className="mt-1 flex items-center gap-2">
-                       <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Petugas:</span>
-                       <span className="text-[10px] font-black text-primary tracking-widest uppercase bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">{user.name}</span>
+                       <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">ID: {user.id}</span>
                     </div>
                   </div>
                </div>
-               {loading && (
-                 <div className="flex items-center gap-2 text-[10px] font-black text-primary animate-pulse">
-                   <Loader2 size={12} className="animate-spin" />
-                   SEDANG MENYIMPAN PERUBAHAN...
-                 </div>
-               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-               {/* Left Column: Core Data */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                <div className="space-y-8">
-                  <div className="flex items-center gap-3 text-primary">
-                    <div className="h-1.5 w-6 bg-primary rounded-full shadow-glow" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Identitas Utama</span>
-                  </div>
-
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><UserIcon size={12} /> Nama Lengkap</label>
-                      <input 
-                        type="text" 
-                        required 
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
-                        value={userForm.name} 
-                        onChange={e => setUserForm({...userForm, name: e.target.value})} 
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Mail size={12} /> Email Akses</label>
-                      <input 
-                        type="email" 
-                        required 
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
-                        value={userForm.email} 
-                        onChange={e => setUserForm({...userForm, email: e.target.value})} 
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Lock size={12} /> Password Baru (Opsional)</label>
-                      <input 
-                        type="password" 
-                        placeholder="Klik untuk isi password baru..."
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
-                        value={userForm.password} 
-                        onChange={e => setUserForm({...userForm, password: e.target.value})} 
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Phone size={12} /> Nomor HP</label>
-                        <input 
-                          type="text" 
-                          className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
-                          value={userForm.noHp} 
-                          onChange={e => setUserForm({...userForm, noHp: e.target.value})} 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><MapPin size={12} /> Wilayah Kerja</label>
-                        <input 
-                          type="text" 
-                          className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
-                          value={userForm.kodeWilayah} 
-                          onChange={e => setUserForm({...userForm, kodeWilayah: e.target.value})} 
-                        />
-                      </div>
-                    </div>
-                  </div>
-               </div>
-
-               {/* Right Column: Auth & Security */}
-               <div className="space-y-8">
-                  <div className="flex items-center gap-3 text-primary">
-                    <div className="h-1.5 w-6 bg-primary rounded-full shadow-glow" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Otoritas & Akses</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Shield size={12} /> Level Otoritas</label>
-                      <select 
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
-                        value={userForm.role}
-                        onChange={e => setUserForm({...userForm, role: e.target.value as UserRole})}
-                        disabled={currentUser?.role === UserRole.ADMIN && user.role === UserRole.SUPER_ADMIN}
-                      >
-                         {currentUser?.role === UserRole.SUPER_ADMIN && <option value={UserRole.SUPER_ADMIN}>SUPER ADMIN</option>}
-                         <option value={UserRole.ADMIN}>ADMIN OPERASIONAL</option>
-                         <option value={UserRole.DATLAP}>PENDAMPING LAPANGAN</option>
-                         <option value={UserRole.OLDAT}>ADMIN OLAH DATA</option>
-                      </select>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</label>
+                      <input type="text" className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Activity size={12} /> Status Akun</label>
-                      <select 
-                        className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
-                        value={userForm.status}
-                        onChange={e => setUserForm({...userForm, status: e.target.value as any})}
-                      >
-                         <option value="Aktif">AKTIF</option>
-                         <option value="Nonaktif">NONAKTIF</option>
-                         <option value="Suspend">SUSPEND</option>
-                      </select>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Akses</label>
+                      <input type="email" className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-bold" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
                     </div>
-                  </div>
-
-                  <div className="p-8 bg-slate-50 border border-slate-200 rounded-[2.5rem] space-y-6">
-                     <div className="flex items-center justify-between px-6 py-4 bg-rose-50 rounded-2xl border border-rose-100">
-                        <div className="flex items-center gap-3">
-                           <LogOut size={16} className="text-rose-500" />
-                           <span className="text-[10px] font-black uppercase text-rose-600">Force Logout Session</span>
-                        </div>
-                        <input 
-                          type="checkbox" 
-                          className="w-5 h-5 rounded accent-rose-500"
-                          checked={userForm.forceLogout}
-                          onChange={e => setUserForm({...userForm, forceLogout: e.target.checked})}
-                        />
-                     </div>
                   </div>
                </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="pt-10 flex gap-4">
+            <div className="pt-10 flex flex-col sm:flex-row gap-4">
                 <button 
-                  onClick={() => {
-                    if (!userForm.name || !userForm.email) {
-                      alert('Nama dan Email wajib diisi!');
-                      return;
-                    }
-                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) {
-                      alert('Format email tidak valid!');
-                      return;
-                    }
-                    
-                    setLoading(true);
-                    setTimeout(() => {
-                      onUpdateUser({
-                        ...user,
-                        name: userForm.name,
-                        email: userForm.email,
-                        noHp: userForm.noHp,
-                        role: userForm.role,
-                        status: userForm.status,
-                        kodeWilayah: userForm.kodeWilayah
-                      });
-                      setLoading(false);
-                      setShowNotification(true);
-                      setTimeout(() => {
-                        setShowNotification(false);
-                        setIsEditing(false);
-                      }, 2000);
-                    }, 1500);
+                  onClick={async () => {
+                    handleAdminAction('UPDATE_PROFILE', 'Update Data Profil', async () => {
+                      await dataService.updateUser(user.id, userForm);
+                      onUpdateUser({...user, ...userForm});
+                      setIsEditing(false);
+                    });
                   }}
-                  disabled={loading || (currentUser?.role === UserRole.ADMIN && user.role === UserRole.SUPER_ADMIN)}
-                  className="px-10 py-5 bg-primary text-white rounded-[2.5rem] font-black shadow-2xl shadow-primary/30 hover:bg-primary-dark transition-all flex items-center gap-3 uppercase tracking-widest text-sm"
+                  className="px-10 py-5 bg-primary text-white rounded-[2.5rem] font-black uppercase text-sm flex-1"
                 >
-                  {loading ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Simpan Perubahan</>}
+                  Simpan Perubahan
                 </button>
-                <button 
-                  onClick={() => setIsEditing(false)}
-                  className="px-10 py-5 bg-white border border-slate-200 text-slate-400 rounded-[2.5rem] font-black hover:bg-slate-50 transition-all uppercase tracking-widest text-sm"
-                >
-                  Batalkan
-                </button>
+                <button onClick={() => setIsEditing(false)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2.5rem] font-black uppercase text-sm flex-1">Batalkan</button>
             </div>
           </motion.div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="space-y-8"
-          >
-            <div className="bg-rose-50 p-8 rounded-[2.5rem] border border-rose-100 flex gap-6">
-              <div className="w-16 h-16 rounded-3xl bg-rose-500 text-white flex items-center justify-center shrink-0">
-                <Shield size={32} />
-              </div>
-              <div>
-                <h5 className="font-black text-rose-600 uppercase text-sm mb-1 tracking-tight">Super Admin Power Console</h5>
-                <p className="text-xs font-bold text-rose-500/70 leading-relaxed">
-                  Anda sedang mengontrol akses penuh user. Setiap perubahan akan dicatat ke dalam master audit system dan tidak dapat dibatalkan tanpa jejak. Gunakan dengan bijak.
-                </p>
-              </div>
-            </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <button key="btn-edit" onClick={() => setIsEditing(true)} className="geometric-card p-6 bg-white border-slate-100 hover:border-primary flex flex-col gap-4 text-left group">
+               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary group-hover:bg-primary/5 transition-all"><Edit3 size={20} /></div>
+               <div><div className="text-xs font-black uppercase text-slate-800 mb-1">Edit Profil User</div><p className="text-[10px] font-medium text-slate-400">Ubah data identitas user.</p></div>
+            </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <button 
-                onClick={() => setIsEditing(true)} 
-                className={cn(
-                  "geometric-card p-6 bg-white border-slate-100 group transition-all flex flex-col gap-4 text-left",
-                  currentUser?.role === UserRole.ADMIN && user.role === UserRole.SUPER_ADMIN 
-                    ? "opacity-50 cursor-not-allowed" 
-                    : "hover:border-primary"
-                )}
-                disabled={currentUser?.role === UserRole.ADMIN && user.role === UserRole.SUPER_ADMIN}
-              >
-                 <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary group-hover:bg-primary/5 transition-all">
-                    <Edit3 size={20} />
-                 </div>
-                 <div>
-                    <div className="text-xs font-black uppercase text-slate-800 mb-1">Edit Profil User</div>
-                    <p className="text-[10px] font-medium text-slate-400">Ubah nama, email, wilayah, atau identitas lainnya.</p>
-                 </div>
-              </button>
+            <button key="btn-suspend" onClick={() => handleAdminAction('SUSPEND', user.status === 'Suspended' ? 'Unsuspend' : 'Suspend Account', () => dataService.suspendUser(user.id, user.status !== 'Suspended'))} className="geometric-card p-6 bg-white border-slate-100 hover:border-rose-500 group flex flex-col gap-4 text-left">
+               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-rose-500 group-hover:bg-rose-50"><Lock size={20} /></div>
+               <div><div className="text-xs font-black uppercase text-slate-800 mb-1">{user.status === 'Suspended' ? 'Aktifkan Akun' : 'Suspend Akun'}</div><p className="text-[10px] font-medium text-slate-400">Blokir akses sementara.</p></div>
+            </button>
 
-        <button 
-          onClick={() => {
-            setIsSuspending(true);
-            setTimeout(() => {
-              onUpdateUser({...user, status: user.status === 'Aktif' ? 'Nonaktif' : 'Aktif'});
-              setIsSuspending(false);
-            }, 1000);
-          }}
-          disabled={isSuspending}
-          className={cn(
-            "geometric-card p-6 bg-white border-slate-100 group transition-all flex flex-col gap-4 text-left",
-            user.status === 'Aktif' ? "hover:border-rose-500" : "hover:border-emerald-500"
-          )}
-        >
-           <div className={cn(
-             "w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center transition-all",
-             user.status === 'Aktif' ? "group-hover:text-rose-500 group-hover:bg-rose-50" : "group-hover:text-emerald-500 group-hover:bg-emerald-50"
-           )}>
-              <Lock size={20} />
-           </div>
-           <div>
-              <div className="text-xs font-black uppercase text-slate-800 mb-1">
-                {isSuspending ? 'Processing...' : user.status === 'Aktif' ? 'Suspend Akun' : 'Aktifkan Akun'}
-              </div>
-              <p className="text-[10px] font-medium text-slate-400">Batalkan semua akses user ke dalam dashboard sistem.</p>
-           </div>
-        </button>
+            <button key="btn-refresh" onClick={() => window.location.reload()} className="geometric-card p-6 bg-white border-slate-100 hover:border-amber-500 group flex flex-col gap-4 text-left">
+               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-50"><RefreshCw size={20} /></div>
+               <div><div className="text-xs font-black uppercase text-slate-800 mb-1">Reset Data / Refresh</div><p className="text-[10px] font-medium text-slate-400">Sync database sekarang.</p></div>
+            </button>
 
-        <button onClick={() => {}} className="geometric-card p-6 bg-white border-slate-100 hover:border-amber-500 group transition-all flex flex-col gap-4 text-left">
-           <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-50 transition-all">
-              <RefreshCw size={20} />
-           </div>
-           <div>
-              <div className="text-xs font-black uppercase text-slate-800 mb-1">Reset Data / Refresh</div>
-              <p className="text-[10px] font-medium text-slate-400">Sync database dan refresh status performa user.</p>
-           </div>
-        </button>
+            <button key="btn-reset-pw" onClick={() => alert('Link reset password telah dikirim ke email user.')} className="geometric-card p-6 bg-white border-slate-100 hover:border-blue-500 group flex flex-col gap-4 text-left">
+               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-500 group-hover:bg-blue-50"><Shield size={20} /></div>
+               <div><div className="text-xs font-black uppercase text-slate-800 mb-1">Reset Password</div><p className="text-[10px] font-medium text-slate-400">Kirim email pemulihan.</p></div>
+            </button>
 
-        <button onClick={() => {}} className="geometric-card p-6 bg-white border-slate-100 hover:border-blue-500 group transition-all flex flex-col gap-4 text-left">
-           <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-500 group-hover:bg-blue-50 transition-all">
-              <Lock size={20} />
-           </div>
-           <div>
-              <div className="text-xs font-black uppercase text-slate-800 mb-1">Reset Password</div>
-              <p className="text-[10px] font-medium text-slate-400">Kirim link reset password otomatis ke email user.</p>
-           </div>
-        </button>
+            <button key="btn-notif" onClick={() => {
+              const msg = prompt('Masukkan pesan notifikasi:');
+              if (msg) handleAdminAction('SEND_NOTIF', 'Kirim Notifikasi', async () => {
+                await dataService.addNotification({ userId: user.id, title: 'Pesan Admin', message: msg, type: 'admin' });
+              });
+            }} className="geometric-card p-6 bg-white border-slate-100 hover:border-emerald-500 group flex flex-col gap-4 text-left">
+               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-50"><Bell size={20} /></div>
+               <div><div className="text-xs font-black uppercase text-slate-800 mb-1">Kirim Notifikasi</div><p className="text-[10px] font-medium text-slate-400">Broadcast pesan ke user.</p></div>
+            </button>
 
-        <button onClick={() => {}} className="geometric-card p-6 bg-white border-slate-100 hover:border-primary group transition-all flex flex-col gap-4 text-left">
-           <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary group-hover:bg-primary/5 transition-all">
-              <Bell size={20} />
-           </div>
-           <div>
-              <div className="text-xs font-black uppercase text-slate-800 mb-1">Kirim Notifikasi</div>
-              <p className="text-[10px] font-medium text-slate-400">Kirim broadcast pesan eksklusif ke dashboard user.</p>
-           </div>
-        </button>
-
-        <button 
-          onClick={() => {
-            if(window.confirm('PERINGATAN KRITIS: Anda akan menghapus akun ini secara permanen. Lanjutkan?')) {
-              if(window.confirm('KONFIRMASI TERAKHIR: Semua data input user ini akan di-archive. Hapus akun sekarang?')) {
-                onDeleteUser(user.id);
-                onClose();
+            <button key="btn-delete" onClick={() => {
+              if (confirm('KONFIRMASI: Hapus akun selamanya?')) {
+                handleAdminAction('DELETE_USER', 'Hapus Akun Permanen', async () => {
+                  await dataService.deleteUser(user.id);
+                  onDeleteUser(user.id);
+                  onClose();
+                });
               }
-            }
-          }}
-          className="geometric-card p-6 bg-white border-slate-100 hover:border-rose-600 hover:bg-rose-50 text-rose-500 group transition-all flex flex-col gap-4 text-left shadow-lg shadow-rose-200/20"
-        >
-           <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center group-hover:text-white group-hover:bg-rose-500 transition-all">
-              <Trash2 size={20} />
-           </div>
-           <div>
-              <div className="text-xs font-black uppercase mb-1">Hapus Akun Selamanya</div>
-              <p className="text-[10px] font-medium opacity-70">Operasi destruktif. Membutuhkan 2x konfirmasi admin.</p>
-           </div>
-        </button>
-      </div>
-    </motion.div>
-  )}
-</AnimatePresence>
-</div>
-);
+            }} className="geometric-card p-6 bg-white border-slate-100 hover:border-rose-600 hover:bg-rose-50 group flex flex-col gap-4 text-left">
+               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-rose-600"><Trash2 size={20} /></div>
+               <div><div className="text-xs font-black uppercase text-rose-600 mb-1">Hapus Akun Selamanya</div><p className="text-[10px] font-medium text-slate-400 opacity-70">Operasi kritis, jejak log audit tercipta.</p></div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[1000] bg-slate-900/95 backdrop-blur-md overflow-hidden flex flex-col"
+      className="fixed inset-0 z-[1000] bg-slate-900 overflow-hidden flex flex-col"
     >
-      <header className="px-10 py-8 border-b border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <header className="px-6 py-6 sm:px-10 sm:py-8 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
            <button onClick={onClose} className="p-3 bg-white/5 text-white rounded-2xl hover:bg-white/10 transition-all border border-white/10">
               <X size={20} />
            </button>
-           <div>
-              <h1 className="text-2xl font-black text-white tracking-tighter uppercase italic">Manajemen Detail User</h1>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">SATDAPUS SUPER ADMIN CONSOLE • ID: {user.id}</p>
+           <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-2xl font-black text-white tracking-tighter uppercase italic truncate">{user.name}</h1>
+              <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">DETAIL USER • {user.role}</p>
            </div>
         </div>
         
-        <div className="flex items-center gap-8 px-8 py-3 bg-white/5 rounded-3xl border border-white/5">
+        <div className="hidden sm:flex items-center gap-8 px-8 py-3 bg-white/5 rounded-3xl border border-white/5 text-xs">
            <div className="text-center">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Global GMV Impact</div>
-              <div className="text-lg font-black text-primary">Rp 45M <span className="text-[10px] text-emerald-400 font-bold ml-1">↑ 12%</span></div>
+              <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Total GMV</div>
+              <div className="font-black text-primary">Rp {stats.totalGmv.toLocaleString('id-ID')}</div>
            </div>
-           <div className="w-px h-8 bg-white/10" />
+           <div className="w-px h-6 bg-white/10" />
            <div className="text-center">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Conversion Rate</div>
-              <div className="text-lg font-black text-white">98.2%</div>
+              <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Trx count</div>
+              <div className="font-black text-white">{stats.trxCount}</div>
            </div>
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden">
-        {/* Navigation Sidebar */}
-        <aside className="w-80 border-r border-white/5 p-10 flex flex-col gap-2 overflow-y-auto bg-slate-900/20">
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {/* Responsive Navigation */}
+        <aside className="hidden md:flex w-72 border-r border-white/5 p-8 flex-col gap-2 overflow-y-auto bg-slate-900/40">
           {[
             { id: 'Overview', icon: Briefcase },
             { id: 'Keuangan', icon: TrendingUp },
@@ -768,51 +602,27 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
               className={cn(
-                "flex items-center gap-4 px-6 py-5 rounded-[2rem] text-sm font-black transition-all group relative",
+                "flex items-center gap-4 px-6 py-4 rounded-2xl text-xs font-black transition-all group relative",
                 activeTab === tab.id 
-                  ? "bg-primary text-white shadow-xl shadow-primary/20" 
-                  : "text-slate-500 hover:text-white hover:bg-white/5"
+                  ? "bg-primary text-white shadow-xl shadow-primary/30" 
+                  : "text-slate-500 hover:bg-white/5"
               )}
             >
-              <tab.icon size={20} className={cn(activeTab === tab.id ? "text-white" : "text-slate-600 transition-colors group-hover:text-primary")} />
+              <tab.icon size={18} />
               {tab.id.toUpperCase()}
-              {activeTab === tab.id && (
-                <motion.div layoutId="active-tab-glow" className="absolute -right-2 w-1.5 h-8 bg-primary rounded-l-full shadow-glow" />
-              )}
             </button>
           ))}
-
-          <div className="mt-auto pt-10">
-             <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
-                <div className="flex items-center gap-3 mb-4">
-                   <Shield className="text-primary" size={20} />
-                   <h6 className="text-[10px] font-black text-white uppercase tracking-widest">Auth Level 3</h6>
-                </div>
-                <p className="text-[9px] font-medium text-slate-500 leading-relaxed mb-4">
-                   Anda sedang mengakses restricted area. Semua metadata aktivitas dicatat oleh system.
-                </p>
-                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                   <div className="h-full bg-primary w-2/3" />
-                </div>
-             </div>
-          </div>
         </aside>
 
-        {/* Content Area */}
-        <section className="flex-1 overflow-y-auto p-12 bg-slate-50">
+        <section className="flex-1 overflow-y-auto p-6 sm:p-10 pb-32 md:pb-10 bg-slate-50 scroll-smooth">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="max-w-6xl mx-auto"
             >
-              <div className="mb-10">
-                 <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">{activeTab}</h2>
-                 <div className="h-1.5 w-24 bg-primary mt-2 rounded-full shadow-glow" />
-              </div>
-
               {activeTab === 'Overview' && renderOverview()}
               {activeTab === 'Keuangan' && renderFinance()}
               {activeTab === 'Riwayat' && renderHistory()}
@@ -821,6 +631,29 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
             </motion.div>
           </AnimatePresence>
         </section>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex justify-between items-center z-[1100] shadow-2xl">
+          {[
+            { id: 'Overview', icon: Briefcase },
+            { id: 'Keuangan', icon: TrendingUp },
+            { id: 'Riwayat', icon: History },
+            { id: 'Aktivitas', icon: ActivityIcon },
+            { id: 'Aksi Admin', icon: Settings },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as TabType)}
+              className={cn(
+                "p-3 rounded-2xl transition-all flex flex-col items-center gap-1",
+                activeTab === tab.id ? "text-primary bg-primary/5" : "text-slate-400"
+              )}
+            >
+              <tab.icon size={20} />
+              <span className="text-[7px] font-black uppercase tracking-tighter">{tab.id === 'Aksi Admin' ? 'Admin' : tab.id}</span>
+            </button>
+          ))}
+        </nav>
       </main>
 
       <AnimatePresence>

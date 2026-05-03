@@ -16,12 +16,54 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["senderId", "senderName", "senderRole", "timestamp"]
+    },
+    "User": {
+      "title": "User",
+      "description": "System user profile",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "noHp": { "type": "string" },
+        "password": { "type": "string" },
+        "joinDate": { "type": "string" },
+        "lastLogin": { "type": "string" },
+        "kodeWilayah": { "type": "string" }
+      }
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "User activity log",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "FinancialTransaction": {
+      "title": "Financial Transaction",
+      "description": "User specific financial records",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "method": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" }
+      }
     }
   },
   "firestore": {
-    "/messages": {
-      "schema": "Message",
-      "description": "All chat messages for the global group"
-    }
+    "/messages": { "schema": "Message", "description": "Global chat" },
+    "/users": { "schema": "User", "description": "Users collection" },
+    "/activities": { "schema": "Activity", "description": "Global logs" },
+    "/transactions": { "schema": "FinancialTransaction", "description": "Financial records" }
   }
 }

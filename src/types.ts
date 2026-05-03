@@ -28,6 +28,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  password?: string;
   noHp?: string;
   role: UserRole;
   kodeWilayah?: string;

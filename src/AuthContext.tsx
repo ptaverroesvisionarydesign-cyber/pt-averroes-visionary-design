@@ -5,7 +5,9 @@
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import { User, UserRole } from './types';
-import { dataService } from './services/dataService';
+import { dataService, initUsers } from './services/dataService';
+import { auth } from './firebase';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -21,11 +23,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for saved session
+    // 1. Check for saved session
     const savedUser = localStorage.getItem('satdapus_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
+
+    // 2. Initialize users from Firestore immediately
+    initUsers();
+
     setIsLoading(false);
   }, []);
 

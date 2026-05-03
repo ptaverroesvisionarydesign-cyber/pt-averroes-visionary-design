@@ -18,8 +18,35 @@ import {
   where,
   getDoc,
   setDoc,
-  onSnapshot
+  onSnapshot,
+  Timestamp
 } from "firebase/firestore";
+import { auth } from "../firebase";
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -59,9 +86,21 @@ let usersStore: User[] = [
 ];
 
 // Initialize real-time sync for users if possible, or just load them
-const initUsers = async () => {
+export const initUsers = async () => {
+  const path = "users";
   try {
-    const q = query(collection(db, "users"));
+    // Test connection
+    try {
+      await setDoc(doc(db, "connection_test", "test"), { 
+        timestamp: new Date().toISOString(),
+        note: "Testing rules deployment"
+      });
+      console.log("Firestore connection test: SUCCESS");
+    } catch (testErr) {
+      console.warn("Firestore connection test: FAILED", testErr);
+    }
+
+    const q = query(collection(db, path));
     const querySnapshot = await getDocs(q);
     const dbUsers: User[] = [];
     querySnapshot.forEach((doc) => {
@@ -85,11 +124,11 @@ const initUsers = async () => {
         noHp: '081234567890',
         kodeWilayah: 'Pusat'
       };
-      await setDoc(doc(db, "users", "1"), saDefault);
+      await setDoc(doc(db, path, "1"), saDefault);
       dbUsers.push({ id: "1", ...saDefault } as User);
     } else if (saInDb.password !== 'avd2711') {
       // Update password if it doesn't match the new requirement
-      await updateDoc(doc(db, "users", saInDb.id), { password: 'avd2711' });
+      await updateDoc(doc(db, path, saInDb.id), { password: 'avd2711' });
       const found = dbUsers.find(u => u.id === saInDb.id);
       if (found) found.password = 'avd2711';
     }
@@ -104,7 +143,7 @@ const initUsers = async () => {
 
       for (const u of defaultData) {
         if (!dbUsers.find(du => du.email.toLowerCase() === u.email.toLowerCase())) {
-          const docRef = await addDoc(collection(db, "users"), u);
+          const docRef = await addDoc(collection(db, path), u);
           dbUsers.push({ id: docRef.id, ...u } as User);
         }
       }
@@ -112,13 +151,12 @@ const initUsers = async () => {
     
     usersStore = dbUsers;
     console.log("Users Store initialized from Firestore");
+    return true;
   } catch (err) {
-    console.error("Error initializing users from Firestore:", err);
+    handleFirestoreError(err, OperationType.LIST, path);
+    return false;
   }
 };
-
-// Start initialization
-initUsers();
 
 // Initial Data List
 let dataListStore: Partial<DataPelakuUsaha>[] = [
@@ -265,8 +303,9 @@ export const dataService = {
   // User Management
   getUsers: () => usersStore,
   getUserByEmail: async (email: string) => {
+    const path = "users";
     try {
-      const q = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
+      const q = query(collection(db, path), where("email", "==", email.toLowerCase()));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         const d = querySnapshot.docs[0];
@@ -274,11 +313,12 @@ export const dataService = {
       }
       return null;
     } catch (err) {
-      console.error("Error getting user by email:", err);
+      handleFirestoreError(err, OperationType.GET, path);
       return null;
     }
   },
   addUser: async (user: Omit<User, 'id' | 'joinDate' | 'lastLogin'>) => {
+    const path = "users";
     try {
       const userData = { 
         ...user, 
@@ -286,19 +326,19 @@ export const dataService = {
         joinDate: new Date().toISOString().split('T')[0],
         lastLogin: '-'
       };
-      const docRef = await addDoc(collection(db, "users"), userData);
+      const docRef = await addDoc(collection(db, path), userData);
       const newUser = { id: docRef.id, ...userData } as User;
       usersStore = [...usersStore, newUser];
       return newUser;
     } catch (err) {
-      console.error("Error adding user:", err);
+      handleFirestoreError(err, OperationType.CREATE, path);
       throw err;
     }
   },
   updateUser: async (id: string, user: Partial<User>) => {
+    const path = `users/${id}`;
     try {
       const { id: _, ...userData } = user;
-      // Filter out empty password if provided and lowercase email
       const finalUpdate: any = { ...userData };
       if (finalUpdate.email) {
         finalUpdate.email = finalUpdate.email.toLowerCase();
@@ -312,17 +352,84 @@ export const dataService = {
       
       usersStore = usersStore.map(u => u.id === id ? { ...u, ...finalUpdate } : u);
     } catch (err) {
-      console.error("Error updating user:", err);
+      handleFirestoreError(err, OperationType.UPDATE, path);
       throw err;
     }
   },
   deleteUser: async (id: string) => {
+    const path = `users/${id}`;
     try {
       const userRef = doc(db, "users", id);
       await deleteDoc(userRef);
       usersStore = usersStore.filter(u => u.id !== id);
     } catch (err) {
-      console.error("Error deleting user:", err);
+      handleFirestoreError(err, OperationType.DELETE, path);
+      throw err;
+    }
+  },
+
+  // Log Activity
+  logActivity: async (activity: { userId: string, type: string, description: string, metadata?: any }) => {
+    const path = "activities";
+    try {
+      await addDoc(collection(db, path), {
+        ...activity,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      // Don't throw for background logs but handle
+      console.error("Error logging activity:", err);
+    }
+  },
+
+  getActivitiesByUserId: (userId: string, callback: (activities: any[]) => void) => {
+    const path = "activities";
+    const q = query(
+      collection(db, path), 
+      where("userId", "==", userId)
+    );
+    return onSnapshot(q, (snapshot) => {
+      const activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      activities.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      callback(activities);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, path);
+    });
+  },
+
+  // Financial Management
+  getTransactionsByUserId: (userId: string, callback: (transactions: any[]) => void) => {
+    const path = "transactions";
+    const q = query(collection(db, path), where("userId", "==", userId));
+    return onSnapshot(q, (snapshot) => {
+      const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      txs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      callback(txs);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, path);
+    });
+  },
+
+  addTransaction: async (tx: { userId: string, amount: number, type: string, status: string, method: string, description: string }) => {
+    const path = "transactions";
+    try {
+      await addDoc(collection(db, path), {
+        ...tx,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, path);
+      throw err;
+    }
+  },
+
+  suspendUser: async (userId: string, suspended: boolean) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { 
+        status: suspended ? 'Suspended' : 'Aktif' 
+      });
+    } catch (err) {
+      console.error("Error suspending user:", err);
       throw err;
     }
   },
