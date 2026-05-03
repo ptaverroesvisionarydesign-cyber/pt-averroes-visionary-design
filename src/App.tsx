@@ -60,7 +60,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-64 lg:w-72 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen shrink-0">
         <div className="p-8">
           <div className="flex items-center justify-center">
-            <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+            <img src="satdapus.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
           </div>
         </div>
 
