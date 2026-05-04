@@ -40,7 +40,7 @@ export default function LoginPage() {
           <img 
             src="satdapus.png" 
             alt="SATDAPUS Logo" 
-            className="w-full h-full object-contain p-4" 
+            className="w-full h-full object-cover" 
             referrerPolicy="no-referrer" 
           />
         </div>
