@@ -60,7 +60,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-64 lg:w-72 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen shrink-0">
         <div className="p-8">
           <div className="flex items-center justify-center">
-            <img src="satdapus.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+            <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
           </div>
         </div>
 
@@ -108,7 +108,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Header - Mobile */}
       <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between sticky top-0 z-40">
         <div className="h-8 flex items-center">
-          <img src="satdapus.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="input_file_0.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -228,7 +228,7 @@ function MainRoutes() {
           transition={{ repeat: Infinity, duration: 2 }}
           className="flex flex-col items-center max-w-xs px-8"
         >
-          <img src="satdapus.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
         </motion.div>
       </div>
     );

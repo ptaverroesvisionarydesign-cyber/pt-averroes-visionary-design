@@ -12,7 +12,9 @@ import {
   Paperclip,
   X,
   ChevronLeft,
-  Loader2
+  Loader2,
+  Trash2,
+  Bell
 } from 'lucide-react';
 import { 
   collection, 
@@ -31,6 +33,8 @@ import {
 } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../AuthContext';
+import { useNotifications } from '../NotificationContext';
+import { dataService } from '../services/dataService';
 import { UserRole } from '../types';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -49,17 +53,20 @@ interface Message {
 
 export default function ChatGroup() {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
   const [activeChat, setActiveChat] = useState<boolean>(!isMobileView);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     const handleResize = () => {
@@ -83,12 +90,30 @@ export default function ChatGroup() {
         id: doc.id,
         ...doc.data()
       })) as Message[];
+
+      // Check for new messages for notification
+      if (!isFirstLoad.current && msgs.length > 0) {
+        const lastMsg = msgs[msgs.length - 1];
+        const prevLastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+
+        if (lastMsg.id !== prevLastMsg?.id && lastMsg.senderId !== user?.id) {
+          addNotification({
+            title: `Pesan Baru dari ${lastMsg.senderName}`,
+            message: lastMsg.message || 'Mengirim file',
+            type: 'INPUT_DATA',
+            userId: 'system',
+            targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT]
+          });
+        }
+      }
+
       setMessages(msgs);
+      isFirstLoad.current = false;
       setTimeout(scrollToBottom, 100);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user?.id]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -147,6 +172,25 @@ export default function ChatGroup() {
     } catch (error) {
       console.error("Error sending message:", error);
       setIsUploading(false);
+    }
+  };
+
+  const handleDeleteMessage = async (id: string) => {
+    if (!confirm('Tarik pesan ini?')) return;
+    try {
+      await dataService.deleteMessage(id);
+    } catch (err) {
+      console.error("Error deleting message:", err);
+    }
+  };
+
+  const handleClearMessages = async () => {
+    if (!confirm('Bersihkan semua pesan dalam grup ini? Tindakan ini tidak dapat dibatalkan.')) return;
+    try {
+      await dataService.clearMessages();
+      setShowOptionsMenu(false);
+    } catch (err) {
+      console.error("Error clearing messages:", err);
     }
   };
 
@@ -251,13 +295,43 @@ export default function ChatGroup() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative">
             <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400">
               <Search size={20} />
             </button>
-            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400">
-              <MoreVertical size={20} />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"
+              >
+                <MoreVertical size={20} />
+              </button>
+              
+              <AnimatePresence>
+                {showOptionsMenu && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30" 
+                      onClick={() => setShowOptionsMenu(false)} 
+                    />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-40"
+                    >
+                      <button 
+                        onClick={handleClearMessages}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-rose-50 text-rose-600 rounded-xl transition-colors text-left"
+                      >
+                        <Trash2 size={16} />
+                        <span className="text-xs font-black uppercase tracking-widest">Bersihkan Pesan</span>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
@@ -281,83 +355,96 @@ export default function ChatGroup() {
                     </span>
                   </div>
                 )}
-                <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                <div className={cn("flex flex-col group/msg", isMe ? "items-end" : "items-start")}>
                   {!isMe && (
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-2">
                       {msg.senderName} • {msg.senderRole}
                     </span>
                   )}
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    className={cn(
-                      "max-w-[85%] md:max-w-md p-4 rounded-3xl shadow-sm relative",
-                      isMe 
-                        ? cn(getRoleColor(user?.role || UserRole.USER), "text-white rounded-tr-none") 
-                        : "bg-white text-slate-700 rounded-tl-none border border-slate-100 shadow-xl shadow-slate-200/50"
-                    )}
-                  >
-                    {msg.message && <p className="text-sm font-medium leading-relaxed">{msg.message}</p>}
-                    
-                    {msg.fileUrl && (
+                  <div className={cn("flex items-center gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className={cn(
+                        "max-w-[85%] md:max-w-md p-4 rounded-3xl shadow-sm relative",
+                        isMe 
+                          ? cn(getRoleColor(user?.role || UserRole.USER), "text-white rounded-tr-none") 
+                          : "bg-white text-slate-700 rounded-tl-none border border-slate-100 shadow-xl shadow-slate-200/50"
+                      )}
+                    >
+                      {msg.message && <p className="text-sm font-medium leading-relaxed">{msg.message}</p>}
+                      
+                      {msg.fileUrl && (
+                        <div className={cn(
+                          "mt-3 p-3 rounded-2xl border flex items-center gap-3",
+                          isMe ? "bg-white/10 border-white/20" : "bg-slate-50 border-slate-100"
+                        )}>
+                          {msg.fileType?.startsWith('image/') ? (
+                            <div className="relative group/img overflow-hidden rounded-xl">
+                              <img src={msg.fileUrl} alt={msg.fileName} className="max-w-full h-40 object-cover rounded-xl" referrerPolicy="no-referrer" />
+                              <a 
+                                href={msg.fileUrl} 
+                                download={msg.fileName}
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white"
+                              >
+                                <Download size={20} />
+                              </a>
+                            </div>
+                          ) : (
+                            <>
+                              <div className={cn(
+                                "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
+                                isMe ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                              )}>
+                                <FileIcon size={20} />
+                              </div>
+                              <div className="flex-1 overflow-hidden">
+                                <p className={cn("text-xs font-black truncate uppercase tracking-tighter", isMe ? "text-white" : "text-slate-800")}>
+                                  {msg.fileName}
+                                </p>
+                                <p className={cn("text-[9px] font-bold uppercase", isMe ? "text-white/60" : "text-slate-400")}>
+                                  {msg.fileType?.split('/')[1] || 'FILE'}
+                                </p>
+                              </div>
+                              <a 
+                                href={msg.fileUrl} 
+                                download={msg.fileName}
+                                className={cn(
+                                  "p-2 rounded-lg transition-colors",
+                                  isMe ? "hover:bg-white/10 text-white" : "hover:bg-slate-100 text-slate-400"
+                                )}
+                              >
+                                <Download size={16} />
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      
                       <div className={cn(
-                        "mt-3 p-3 rounded-2xl border flex items-center gap-3",
-                        isMe ? "bg-white/10 border-white/20" : "bg-slate-50 border-slate-100"
+                        "mt-2 flex items-center gap-1",
+                        isMe ? "justify-end" : "justify-start"
                       )}>
-                        {msg.fileType?.startsWith('image/') ? (
-                          <div className="relative group/img overflow-hidden rounded-xl">
-                            <img src={msg.fileUrl} alt={msg.fileName} className="max-w-full h-40 object-cover rounded-xl" referrerPolicy="no-referrer" />
-                            <a 
-                              href={msg.fileUrl} 
-                              download={msg.fileName}
-                              className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white"
-                            >
-                              <Download size={20} />
-                            </a>
-                          </div>
-                        ) : (
-                          <>
-                            <div className={cn(
-                              "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-                              isMe ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-                            )}>
-                              <FileIcon size={20} />
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                              <p className={cn("text-xs font-black truncate uppercase tracking-tighter", isMe ? "text-white" : "text-slate-800")}>
-                                {msg.fileName}
-                              </p>
-                              <p className={cn("text-[9px] font-bold uppercase", isMe ? "text-white/60" : "text-slate-400")}>
-                                {msg.fileType?.split('/')[1] || 'FILE'}
-                              </p>
-                            </div>
-                            <a 
-                              href={msg.fileUrl} 
-                              download={msg.fileName}
-                              className={cn(
-                                "p-2 rounded-lg transition-colors",
-                                isMe ? "hover:bg-white/10 text-white" : "hover:bg-slate-100 text-slate-400"
-                              )}
-                            >
-                              <Download size={16} />
-                            </a>
-                          </>
-                        )}
+                        <span className={cn(
+                          "text-[9px] font-black uppercase",
+                          isMe ? "text-white/60" : "text-slate-400"
+                        )}>
+                          {msg.timestamp ? format(msg.timestamp.toDate(), 'HH:mm') : '...'}
+                        </span>
                       </div>
+                    </motion.div>
+
+                    {/* Delete/Withdraw Button - only for sender or admin */}
+                    {(isMe || user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) && (
+                      <button 
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        className="opacity-0 group-hover/msg:opacity-100 p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                        title="Tarik pesan"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     )}
-                    
-                    <div className={cn(
-                      "mt-2 flex items-center gap-1",
-                      isMe ? "justify-end" : "justify-start"
-                    )}>
-                      <span className={cn(
-                        "text-[9px] font-black uppercase",
-                        isMe ? "text-white/60" : "text-slate-400"
-                      )}>
-                        {msg.timestamp ? format(msg.timestamp.toDate(), 'HH:mm') : '...'}
-                      </span>
-                    </div>
-                  </motion.div>
+                  </div>
                 </div>
               </React.Fragment>
             );

@@ -514,9 +514,9 @@ export default function UserDetailModal({ user, onClose, onUpdateUser, onDeleteU
                <div><div className="text-xs font-black uppercase text-slate-800 mb-1">Edit Profil User</div><p className="text-[10px] font-medium text-slate-400">Ubah data identitas user.</p></div>
             </button>
 
-            <button key="btn-suspend" onClick={() => handleAdminAction('SUSPEND', user.status === 'Suspended' ? 'Unsuspend' : 'Suspend Account', () => dataService.suspendUser(user.id, user.status !== 'Suspended'))} className="geometric-card p-6 bg-white border-slate-100 hover:border-rose-500 group flex flex-col gap-4 text-left">
+            <button key="btn-suspend" onClick={() => handleAdminAction('SUSPEND', user.status === 'Suspend' ? 'Unsuspend' : 'Suspend Account', () => dataService.suspendUser(user.id, user.status !== 'Suspend'))} className="geometric-card p-6 bg-white border-slate-100 hover:border-rose-500 group flex flex-col gap-4 text-left">
                <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-rose-500 group-hover:bg-rose-50"><Lock size={20} /></div>
-               <div><div className="text-xs font-black uppercase text-slate-800 mb-1">{user.status === 'Suspended' ? 'Aktifkan Akun' : 'Suspend Akun'}</div><p className="text-[10px] font-medium text-slate-400">Blokir akses sementara.</p></div>
+               <div><div className="text-xs font-black uppercase text-slate-800 mb-1">{user.status === 'Suspend' ? 'Aktifkan Akun' : 'Suspend Akun'}</div><p className="text-[10px] font-medium text-slate-400">Blokir akses sementara.</p></div>
             </button>
 
             <button key="btn-refresh" onClick={() => window.location.reload()} className="geometric-card p-6 bg-white border-slate-100 hover:border-amber-500 group flex flex-col gap-4 text-left">

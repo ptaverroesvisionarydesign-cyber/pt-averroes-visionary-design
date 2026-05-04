@@ -423,10 +423,34 @@ export const dataService = {
     }
   },
 
+  // Chat Management
+  deleteMessage: async (id: string) => {
+    const path = `messages/${id}`;
+    try {
+      await deleteDoc(doc(db, "messages", id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, path);
+      throw err;
+    }
+  },
+
+  clearMessages: async () => {
+    const path = "messages";
+    try {
+      const q = query(collection(db, path));
+      const snapshot = await getDocs(q);
+      const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, path);
+      throw err;
+    }
+  },
+
   suspendUser: async (userId: string, suspended: boolean) => {
     try {
       await updateDoc(doc(db, "users", userId), { 
-        status: suspended ? 'Suspended' : 'Aktif' 
+        status: suspended ? 'Suspend' : 'Aktif' 
       });
     } catch (err) {
       console.error("Error suspending user:", err);
