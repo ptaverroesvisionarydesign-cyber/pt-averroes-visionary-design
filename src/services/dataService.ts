@@ -47,11 +47,8 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
-console.log("ENV:", import.meta.env);
-console.log("API KEY:", import.meta.env.VITE_API_KEY);
-const ai = new GoogleGenAI({
-  apiKey: import.meta.env.VITE_API_KEY
-});
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Centralized Store (Simulated for this demo)
 let gmvSettingsStore = {
