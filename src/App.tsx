@@ -41,7 +41,16 @@ import Statistik from './components/Statistik';
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [chatUnread, setChatUnread] = React.useState(Number(localStorage.getItem('chat_unread_count') || 0));
   const location = useLocation();
+
+  React.useEffect(() => {
+    const handleUnreadUpdate = () => {
+      setChatUnread(Number(localStorage.getItem('chat_unread_count') || 0));
+    };
+    window.addEventListener('chat_unread_updated', handleUnreadUpdate);
+    return () => window.removeEventListener('chat_unread_updated', handleUnreadUpdate);
+  }, []);
 
   const navigation = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT] },
@@ -60,7 +69,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-64 lg:w-72 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen shrink-0">
         <div className="p-8">
           <div className="flex items-center justify-center">
-            <img src="satdapus.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+            <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
           </div>
         </div>
 
@@ -80,6 +89,11 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <item.icon size={20} className={cn(isActive ? "text-primary" : "text-slate-400")} />
                 {item.name}
+                {item.name === 'Chat Grup' && chatUnread > 0 && (
+                  <span className="ml-auto bg-primary text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                    {chatUnread}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -108,7 +122,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Header - Mobile */}
       <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between sticky top-0 z-40">
         <div className="h-8 flex items-center">
-          <img src="satdapus.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="input_file_0.png" alt="SATDAPUS Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -129,11 +143,16 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               key={item.name}
               to={item.path}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all",
+                "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
                 isActive ? "text-primary bg-primary/5" : "text-slate-400"
               )}
             >
               <item.icon size={20} />
+              {item.name === 'Chat Grup' && chatUnread > 0 && (
+                <span className="absolute top-1 right-1 bg-primary text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse border-2 border-white">
+                  {chatUnread}
+                </span>
+              )}
               <span className="text-[8px] font-black uppercase tracking-tighter">{item.name.split(' ')[0]}</span>
             </Link>
           );
@@ -228,7 +247,7 @@ function MainRoutes() {
           transition={{ repeat: Infinity, duration: 2 }}
           className="flex flex-col items-center max-w-xs px-8"
         >
-          <img src="satdapus.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="input_file_0.png" alt="SATDAPUS Logo" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
         </motion.div>
       </div>
     );

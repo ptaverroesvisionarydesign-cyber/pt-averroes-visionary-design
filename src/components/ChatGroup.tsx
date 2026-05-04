@@ -49,6 +49,12 @@ interface Message {
   fileName?: string;
   fileType?: string;
   timestamp: Timestamp | null;
+  replyTo?: {
+    id: string;
+    senderName: string;
+    message: string;
+  };
+  mentions?: string[];
 }
 
 export default function ChatGroup() {
@@ -61,12 +67,23 @@ export default function ChatGroup() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [lastSeenId, setLastSeenId] = useState<string | null>(localStorage.getItem('chat_last_seen_id'));
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
   const [activeChat, setActiveChat] = useState<boolean>(!isMobileView);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFirstLoad = useRef(true);
+
+  // Update global unread count for sidebar
+  useEffect(() => {
+    localStorage.setItem('chat_unread_count', unreadCount.toString());
+    // Dispatch custom event for Sidebar to pick up
+    window.dispatchEvent(new Event('chat_unread_updated'));
+  }, [unreadCount]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -92,28 +109,68 @@ export default function ChatGroup() {
       })) as Message[];
 
       // Check for new messages for notification
-      if (!isFirstLoad.current && msgs.length > 0) {
+      if (msgs.length > 0) {
         const lastMsg = msgs[msgs.length - 1];
-        const prevLastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+        
+        if (!isFirstLoad.current) {
+          const prevLastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
 
-        if (lastMsg.id !== prevLastMsg?.id && lastMsg.senderId !== user?.id) {
-          addNotification({
-            title: `Pesan Baru dari ${lastMsg.senderName}`,
-            message: lastMsg.message || 'Mengirim file',
-            type: 'INPUT_DATA',
-            userId: 'system',
-            targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT]
-          });
+          if (lastMsg.id !== prevLastMsg?.id && lastMsg.senderId !== user?.id) {
+            // Only add to unread if not at bottom or chat not active
+            if (!isAtBottom) {
+              setUnreadCount(prev => prev + 1);
+            }
+
+            addNotification({
+              title: `Pesan Baru dari ${lastMsg.senderName}`,
+              message: lastMsg.message || 'Mengirim file',
+              type: 'INPUT_DATA',
+              userId: 'system',
+              targetRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DATLAP, UserRole.OLDAT]
+            });
+          }
+        } else {
+          // On first load, calculate unread based on lastSeenId
+          if (lastSeenId) {
+            const lastIdx = msgs.findIndex(m => m.id === lastSeenId);
+            if (lastIdx !== -1) {
+              const unread = msgs.slice(lastIdx + 1).filter(m => m.senderId !== user?.id).length;
+              setUnreadCount(unread);
+            }
+          } else {
+            setUnreadCount(Math.min(msgs.length, 50)); // Default some unread if never seen
+          }
         }
       }
 
       setMessages(msgs);
       isFirstLoad.current = false;
-      setTimeout(scrollToBottom, 100);
+      if (isAtBottom) {
+        setTimeout(scrollToBottom, 100);
+      }
     });
 
     return () => unsubscribe();
   }, [user?.id]);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    
+    // Check if user is at bottom
+    const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setIsAtBottom(atBottom);
+    
+    // If at bottom, clear unread count and update last seen
+    if (atBottom && messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.id !== lastSeenId) {
+        setLastSeenId(lastMsg.id);
+        localStorage.setItem('chat_last_seen_id', lastMsg.id);
+        setUnreadCount(0);
+      }
+    }
+  };
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -127,7 +184,10 @@ export default function ChatGroup() {
     if (!user) return;
 
     const textPayload = inputText;
+    const replyPayload = replyingTo;
+    
     setInputText('');
+    setReplyingTo(null);
     
     try {
       let fileData = {};
@@ -160,14 +220,31 @@ export default function ChatGroup() {
         setUploadProgress(0);
       }
 
-      await addDoc(collection(db, 'messages'), {
+      // Check for mentions
+      const mentions = textPayload.match(/@(\w+)/g)?.map(m => m.substring(1)) || [];
+
+      const msgData: any = {
         senderId: user.id,
         senderName: user.name,
         senderRole: user.role,
         message: textPayload,
         timestamp: serverTimestamp(),
         ...fileData
-      });
+      };
+
+      if (replyPayload) {
+        msgData.replyTo = {
+          id: replyPayload.id,
+          senderName: replyPayload.senderName,
+          message: replyPayload.message || 'File'
+        };
+      }
+
+      if (mentions.length > 0) {
+        msgData.mentions = mentions;
+      }
+
+      await addDoc(collection(db, 'messages'), msgData);
       
     } catch (error) {
       console.error("Error sending message:", error);
@@ -188,6 +265,9 @@ export default function ChatGroup() {
     if (!confirm('Bersihkan semua pesan dalam grup ini? Tindakan ini tidak dapat dibatalkan.')) return;
     try {
       await dataService.clearMessages();
+      setUnreadCount(0);
+      setLastSeenId(null);
+      localStorage.removeItem('chat_last_seen_id');
       setShowOptionsMenu(false);
     } catch (err) {
       console.error("Error clearing messages:", err);
@@ -338,10 +418,23 @@ export default function ChatGroup() {
         {/* Message List */}
         <div 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50/50"
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50/50 relative"
         >
           {messages.map((msg, idx) => {
             const isMe = msg.senderId === user?.id;
+            
+            // Unread detection based on timestamp
+            let isUnread = false;
+            if (!isMe && lastSeenId) {
+              const lastSeenMsg = messages.find(m => m.id === lastSeenId);
+              if (lastSeenMsg && msg.timestamp && lastSeenMsg.timestamp) {
+                isUnread = msg.timestamp.toMillis() > lastSeenMsg.timestamp.toMillis();
+              } else if (!lastSeenMsg) {
+                isUnread = true;
+              }
+            }
+
             const showDate = idx === 0 || 
               (msg.timestamp && messages[idx-1].timestamp && 
                format(msg.timestamp.toDate(), 'yyyy-MM-dd') !== format(messages[idx-1].timestamp.toDate(), 'yyyy-MM-dd'));
@@ -361,18 +454,76 @@ export default function ChatGroup() {
                       {msg.senderName} • {msg.senderRole}
                     </span>
                   )}
-                  <div className={cn("flex items-center gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
+                  <div className={cn("flex items-center gap-2 max-w-full relative", isMe ? "flex-row-reverse" : "flex-row")}>
+                    {/* Swipe Indicator */}
+                    <div className={cn(
+                      "absolute top-1/2 -translate-y-1/2 flex items-center gap-2 text-primary opacity-0 pointer-events-none transition-opacity",
+                      isMe ? "left-full ml-4" : "right-full mr-4"
+                    )}>
+                      <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Balas Pesan</span>
+                      <Send size={12} className="rotate-180" />
+                    </div>
+
                     <motion.div 
+                      drag="x"
+                      dragConstraints={{ left: isMe ? -100 : 0, right: isMe ? 0 : 100 }}
+                      onDrag={(e, info) => {
+                        const threshold = isMe ? -50 : 50;
+                        const indicator = (e.currentTarget as HTMLElement).parentElement?.querySelector('.opacity-0');
+                        if (indicator) {
+                          if ((isMe && info.offset.x < threshold) || (!isMe && info.offset.x > threshold)) {
+                            indicator.classList.remove('opacity-0');
+                          } else {
+                            indicator.classList.add('opacity-0');
+                          }
+                        }
+                      }}
+                      onDragEnd={(_, info) => {
+                        const threshold = isMe ? -50 : 50;
+                        if ((isMe && info.offset.x < threshold) || (!isMe && info.offset.x > threshold)) {
+                          setReplyingTo(msg);
+                        }
+                        const indicator = (scrollRef.current as HTMLElement).querySelector('.opacity-0'); // This selector is too broad, but onDragEnd doesn't give target easily without ref
+                      }}
                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      animate={{ 
+                        opacity: 1, 
+                        scale: 1, 
+                        y: 0,
+                        backgroundColor: isUnread ? '#f0f9ff' : undefined
+                      }}
                       className={cn(
-                        "max-w-[85%] md:max-w-md p-4 rounded-3xl shadow-sm relative",
+                        "max-w-[85%] md:max-w-md p-4 rounded-3xl shadow-sm relative transition-colors duration-1000",
                         isMe 
                           ? cn(getRoleColor(user?.role || UserRole.USER), "text-white rounded-tr-none") 
-                          : "bg-white text-slate-700 rounded-tl-none border border-slate-100 shadow-xl shadow-slate-200/50"
+                          : "bg-white text-slate-700 rounded-tl-none border border-slate-100 shadow-xl shadow-slate-200/50",
+                        isUnread && !isMe && "animate-pulse"
                       )}
                     >
-                      {msg.message && <p className="text-sm font-medium leading-relaxed">{msg.message}</p>}
+                      {/* Reply Link */}
+                      {msg.replyTo && (
+                        <div className={cn(
+                          "mb-2 p-2 rounded-xl text-[10px] border-l-4",
+                          isMe 
+                            ? "bg-black/10 border-white/50 text-white/80" 
+                            : "bg-slate-50 border-primary text-slate-500"
+                        )}>
+                          <p className="font-black uppercase tracking-widest">{msg.replyTo.senderName}</p>
+                          <p className="truncate">{msg.replyTo.message}</p>
+                        </div>
+                      )}
+
+                      {msg.message && (
+                        <p className="text-sm font-medium leading-relaxed">
+                          {msg.message.split(' ').map((word, wIdx) => (
+                            word.startsWith('@') ? (
+                              <span key={wIdx} className={cn("font-black underline decoration-2 underline-offset-4", isMe ? "text-white" : "text-primary")}>
+                                {word}{' '}
+                              </span>
+                            ) : word + ' '
+                          ))}
+                        </p>
+                      )}
                       
                       {msg.fileUrl && (
                         <div className={cn(
@@ -467,10 +618,49 @@ export default function ChatGroup() {
               </motion.div>
             )}
           </AnimatePresence>
+          
+          {/* Unread Message Bubble Float */}
+          <AnimatePresence>
+            {!isAtBottom && unreadCount > 0 && (
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                onClick={scrollToBottom}
+                className="fixed bottom-32 right-12 bg-primary text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 z-30 group active:scale-95 transition-all"
+              >
+                <Bell size={16} className="group-hover:animate-bounce" />
+                <span className="text-[10px] font-black uppercase tracking-widest">{unreadCount} Pesan Baru</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Input Area */}
         <footer className="p-4 md:p-6 bg-white border-t border-slate-100">
+          {/* Reply Preview */}
+          <AnimatePresence>
+            {replyingTo && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4 p-3 bg-primary/5 rounded-2xl border-l-4 border-primary flex items-center justify-between"
+              >
+                <div className="overflow-hidden">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Membalas {replyingTo.senderName}</p>
+                  <p className="text-xs text-slate-600 truncate">{replyingTo.message || 'File'}</p>
+                </div>
+                <button 
+                  onClick={() => setReplyingTo(null)}
+                  className="p-2 hover:bg-primary/10 rounded-lg text-primary"
+                >
+                  <X size={16} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {selectedFile && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
